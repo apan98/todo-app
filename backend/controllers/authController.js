@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+const tokenBlocklist = new Set();
+
 exports.register = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -39,6 +41,12 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = (req, res) => {
+  const token = req.cookies.token;
+  if (token) {
+    tokenBlocklist.add(token);
+  }
   res.clearCookie("token");
   res.json({ message: "Logout successful" });
 };
+
+exports.tokenBlocklist = tokenBlocklist;
