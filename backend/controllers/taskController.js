@@ -1,5 +1,4 @@
-const { Task } = require("../models");
-const sequelize = require("../config/database");
+const { Task, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 exports.getTasks = async (req, res) => {
