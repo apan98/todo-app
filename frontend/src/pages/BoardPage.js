@@ -10,97 +10,118 @@ const BoardPage = () => {
   const [data, setData] = useState(null);
   const [filters, setFilters] = useState({ priority: 'all', search: '' });
 
+    const [error, setError] = useState(null);
+
   const fetchData = useCallback(async () => {
     try {
-      // No need for token in header, it's in an httpOnly cookie
-      const tasksResult = await axios.get('/api/tasks');
-      const categoriesResult = await axios.get('/api/categories');
-      
-      const tasks = tasksResult.data.tasks.reduce((acc, task) => {
-        acc[task.id] = task;
-        return acc;
-      }, {});
-      
-      const columns = categoriesResult.data.reduce((acc, category) => {
-        acc[category.id] = {
-          id: String(category.id), // Ensure IDs are strings for dnd
-          title: category.name,
-          // Sort tasks by position on initial load
-          taskIds: tasksResult.data.tasks
-            .filter(task => task.CategoryId === category.id)
-            .sort((a, b) => a.position - b.position)
-            .map(task => task.id)
+        const params = {
+            search: filters.search,
+            priority: filters.priority,
         };
-        return acc;
-      }, {});
+        const tasksResult = await axios.get('/api/tasks', { params });
+        const categoriesResult = await axios.get('/api/categories');
 
-      const columnOrder = categoriesResult.data.map(category => String(category.id));
-      
-      setData({ tasks, columns, columnOrder });
+        const tasks = tasksResult.data.tasks.reduce((acc, task) => {
+            acc[task.id] = task;
+            return acc;
+        }, {});
+
+        const columns = categoriesResult.data.reduce((acc, category) => {
+            acc[category.id] = {
+                id: String(category.id),
+                title: category.name,
+                taskIds: tasksResult.data.tasks
+                    .filter(task => task.CategoryId === category.id)
+                    .sort((a, b) => a.position - b.position)
+                    .map(task => task.id),
+            };
+            return acc;
+        }, {});
+
+        const columnOrder = categoriesResult.data.map(category => String(category.id));
+
+        setData({ tasks, columns, columnOrder });
+        setError(null); // Clear previous errors
     } catch (error) {
-      console.error("Error fetching data", error);
-      // Handle auth errors, e.g., redirect to login
+        console.error("Error fetching data", error);
+        setError("Failed to fetch board data. Please try again later.");
     }
-  }, []);
+}, [filters]);
 
-  useEffect(() => {
+useEffect(() => {
     fetchData();
-  }, [fetchData]);
+}, [fetchData]);
 
-  const onDragEnd = (result) => {
+const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) return;
 
     if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
+        destination.droppableId === source.droppableId &&
+        destination.index === source.index
     ) {
-      return;
+        return;
     }
-    
+
     const startColumn = data.columns[source.droppableId];
     const finishColumn = data.columns[destination.droppableId];
+    const movingTaskId = parseInt(draggableId);
+
+    // Store the original state
+    const originalState = JSON.parse(JSON.stringify(data));
 
     // Optimistic UI update
     const startTaskIds = Array.from(startColumn.taskIds);
     startTaskIds.splice(source.index, 1);
-    const newStartColumn = { ...startColumn, taskIds: startTaskIds };
+    const newStart = { ...startColumn, taskIds: startTaskIds };
 
-    let newFinishColumn;
+    let newFinish;
     if (startColumn === finishColumn) {
         const newTaskIds = Array.from(startColumn.taskIds);
         newTaskIds.splice(source.index, 1);
-        newTaskIds.splice(destination.index, 0, parseInt(draggableId));
-        newFinishColumn = { ...startColumn, taskIds: newTaskIds };
+        newTaskIds.splice(destination.index, 0, movingTaskId);
+        newFinish = { ...startColumn, taskIds: newTaskIds };
     } else {
         const finishTaskIds = Array.from(finishColumn.taskIds);
-        finishTaskIds.splice(destination.index, 0, parseInt(draggableId));
-        newFinishColumn = { ...finishColumn, taskIds: finishTaskIds };
+        finishTaskIds.splice(destination.index, 0, movingTaskId);
+        newFinish = { ...finishColumn, taskIds: finishTaskIds };
     }
 
     const newState = {
-      ...data,
-      columns: {
-        ...data.columns,
-        [newStartColumn.id]: newStartColumn,
-        [newFinishColumn.id]: newFinishColumn,
-      },
+        ...data,
+        columns: {
+            ...data.columns,
+            [newStart.id]: newStart,
+            [newFinish.id]: newFinish,
+        },
     };
     setData(newState);
+    setError(null); // Clear previous errors on new action
 
-    // Persist changes to the backend
-    axios.post('/api/tasks/dnd/reorder', {
-        draggableId: parseInt(draggableId),
-        source: { droppableId: parseInt(source.droppableId), index: source.index },
-        destination: { droppableId: parseInt(destination.droppableId), index: destination.index },
-    })
-    .catch(err => {
+    try {
+        const taskToUpdate = data.tasks[movingTaskId];
+        if (!taskToUpdate) {
+            throw new Error("Task data not found for optimistic update!");
+        }
+
+        await axios.put(`/api/tasks/${movingTaskId}`, {
+            CategoryId: parseInt(destination.droppableId),
+            position: destination.index,
+            version: taskToUpdate.version, // Include version for optimistic locking
+        });
+
+        // If API call is successful, we can refetch data to ensure consistency
+        // or update the local task version if the API returns the updated task.
+        fetchData();
+
+    } catch (err) {
         console.error("Failed to reorder task", err);
+        setError("Could not save task move. Reverting changes.");
         // If the request fails, revert the state to the original data
-        fetchData(); 
-    });
-  };
+        setData(originalState);
+    }
+};
   
   const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -108,26 +129,9 @@ const BoardPage = () => {
 
   if (!data) return <div>Loading...</div>;
 
-  // Apply filters
-  const getFilteredTasks = () => {
-    let filtered = Object.values(data.tasks);
-
-    if (filters.priority !== 'all') {
-        filtered = filtered.filter(task => task.priority === filters.priority);
-    }
-
-    if (filters.search) {
-        filtered = filtered.filter(task => 
-            task.title.toLowerCase().includes(filters.search.toLowerCase())
-        );
-    }
-    return new Set(filtered.map(t => t.id));
-  };
-
-  const filteredTaskIds = getFilteredTasks();
-
   return (
     <div>
+        {error && <div style={{ color: 'red', padding: '10px' }}>{error}</div>}
         <div style={{ padding: '10px', display: 'flex', gap: '20px' }}>
             <input 
                 type="text"
@@ -147,10 +151,9 @@ const BoardPage = () => {
         <div style={{ display: 'flex' }}>
             {data.columnOrder.map(columnId => {
                 const column = data.columns[columnId];
-                // Filter tasks for the column
                 const tasks = column.taskIds
                     .map(taskId => data.tasks[taskId])
-                    .filter(task => task && filteredTaskIds.has(task.id));
+                    .filter(Boolean); // Filter out undefined tasks
                 return <Column key={column.id} column={column} tasks={tasks} />;
             })}
         </div>

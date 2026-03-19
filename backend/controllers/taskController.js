@@ -3,11 +3,21 @@ const { Op } = require("sequelize");
 
 exports.getTasks = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, priority, search } = req.query;
     const offset = (page - 1) * limit;
 
+    const whereClause = { UserId: req.user.id };
+
+    if (priority && priority !== "all") {
+      whereClause.priority = priority;
+    }
+
+    if (search) {
+      whereClause.title = { [Op.iLike]: `%${search}%` };
+    }
+
     const { count, rows } = await Task.findAndCountAll({
-      where: { UserId: req.user.id },
+      where: whereClause,
       order: [
         ["CategoryId", "ASC"],
         ["position", "ASC"],
