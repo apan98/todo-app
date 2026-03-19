@@ -7,10 +7,20 @@ const User = sequelize.define("User", {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
+    validate: {
+      notEmpty: {
+        msg: "Username cannot be empty",
+      },
+    },
   },
   password: {
     type: DataTypes.STRING,
     allowNull: false,
+    validate: {
+      notEmpty: {
+        msg: "Password cannot be empty",
+      },
+    },
   },
 });
 
