@@ -28,6 +28,10 @@ const Task = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    order: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
   },
   {
     indexes: [
@@ -41,3 +45,4 @@ const Task = sequelize.define(
 );
 
 module.exports = Task;
+

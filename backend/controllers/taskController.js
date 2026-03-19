@@ -195,3 +195,19 @@ exports.reorderTasks = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 };
+
+exports.deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await Task.findOne({ where: { id, UserId: req.user.id } });
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found or you do not have permission to delete it" });
+    }
+
+    await task.destroy();
+    res.status(204).send();
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

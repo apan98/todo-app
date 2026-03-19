@@ -7,6 +7,10 @@ const tokenBlocklist = new Set();
 exports.register = async (req, res) => {
   try {
     const { username, password } = req.body;
+    const existingUser = await User.findOne({ where: { username } });
+    if (existingUser) {
+      return res.status(409).json({ error: "User already exists" });
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ username, password: hashedPassword });
     const userResponse = {
