@@ -5,7 +5,13 @@ exports.register = async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.create({ username, password });
-    res.status(201).json({ message: "User created successfully" });
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+    res.status(201).json({ message: "User created successfully", user: userResponse });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -21,12 +27,18 @@ exports.login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.json({ token });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    res.json({ message: "Login successful" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
 exports.logout = (req, res) => {
+  res.clearCookie("token");
   res.json({ message: "Logout successful" });
 };

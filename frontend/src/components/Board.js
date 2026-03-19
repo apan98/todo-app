@@ -14,12 +14,10 @@ const Board = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token");
+        setLoading(true);
         const [tasksRes, categoriesRes] = await Promise.all([
-          axios.get(`${API_URL}/tasks`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${API_URL}/categories`),
+          axios.get(`${API_URL}/tasks`, { withCredentials: true }),
+          axios.get(`${API_URL}/categories`, { withCredentials: true }),
         ]);
         setTasks(tasksRes.data);
         setCategories(categoriesRes.data);
@@ -50,12 +48,28 @@ const Board = () => {
     const task = updatedTasks.find((t) => t.id === parseInt(draggableId));
     task.CategoryId = parseInt(destination.droppableId);
 
-    setTasks(updatedTasks);
+    const tasksInDestination = updatedTasks.filter(
+      (t) => t.CategoryId === parseInt(destination.droppableId)
+    );
+    tasksInDestination.splice(source.index, 1);
+    tasksInDestination.splice(destination.index, 0, task);
 
-    const token = localStorage.getItem("token");
-    axios.put(`${API_URL}/tasks/${draggableId}`, task, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const updatedPositions = tasksInDestination.map((t, index) => ({
+      ...t,
+      position: index,
+    }));
+
+    const otherTasks = updatedTasks.filter(
+      (t) => t.CategoryId !== parseInt(destination.droppableId)
+    );
+    const newTasks = [...otherTasks, ...updatedPositions];
+    setTasks(newTasks);
+
+    axios.put(
+      `${API_URL}/tasks/${draggableId}/position`,
+      { position: destination.index },
+      { withCredentials: true }
+    );
   };
 
   if (loading) return <div>Loading...</div>;
@@ -75,6 +89,7 @@ const Board = () => {
                 <h2>{category.name}</h2>
                 {tasks
                   .filter((task) => task.CategoryId === category.id)
+                  .sort((a, b) => a.position - b.position)
                   .map((task, index) => (
                     <Draggable
                       key={task.id}

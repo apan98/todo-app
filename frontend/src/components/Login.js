@@ -13,11 +13,14 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, {
-        username,
-        password,
-      });
-      localStorage.setItem("token", res.data.token);
+      const res = await axios.post(
+        `${API_URL}/auth/login`,
+        {
+          username,
+          password,
+        },
+        { withCredentials: true }
+      );
       navigate("/");
     } catch (err) {
       setError("Invalid credentials");

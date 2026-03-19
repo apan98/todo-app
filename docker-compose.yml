@@ -2,6 +2,8 @@ version: '3.8'
 services:
   postgres:
     image: postgres:13
+    env_file:
+      - ./backend/.env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -17,6 +19,8 @@ services:
       dockerfile: backend.Dockerfile
     ports:
       - '5000:5000'
+    env_file:
+      - ./backend/.env
     environment:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}

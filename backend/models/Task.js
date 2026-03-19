@@ -16,6 +16,11 @@ const Task = sequelize.define("Task", {
   dueDate: {
     type: DataTypes.DATE,
   },
+  position: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
 });
 
 module.exports = Task;
