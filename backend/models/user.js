@@ -12,7 +12,8 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       User.hasMany(models.Task, {
         foreignKey: 'userId',
-        as: 'tasks'
+        as: 'tasks',
+        onDelete: 'CASCADE'
       });
     }
   }

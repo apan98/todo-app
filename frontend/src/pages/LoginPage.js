@@ -11,7 +11,7 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       const response = await axios.post('/api/auth/login', { username, password });
-      localStorage.setItem('token', response.data.token);
+      // No longer storing token in localStorage
       navigate('/');
     } catch (error) {
       console.error(error);

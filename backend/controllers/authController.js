@@ -1,12 +1,14 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const { User } = require("../models");
+const bcrypt = require('bcryptjs');
 
 const tokenBlocklist = new Set();
 
 exports.register = async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await User.create({ username, password });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, password: hashedPassword });
     const userResponse = {
       id: user.id,
       username: user.username,
@@ -23,7 +25,7 @@ exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ where: { username } });
-    if (!user || !(await user.validPassword(password))) {
+    if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
