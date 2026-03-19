@@ -63,13 +63,21 @@ const Board = () => {
       (t) => t.CategoryId !== parseInt(destination.droppableId)
     );
     const newTasks = [...otherTasks, ...updatedPositions];
+    const originalTasks = tasks;
     setTasks(newTasks);
 
-    axios.put(
-      `${API_URL}/tasks/${draggableId}/position`,
-      { position: destination.index },
-      { withCredentials: true }
-    );
+    try {
+      await axios.put(
+        `${API_URL}/tasks/${draggableId}`,
+        { CategoryId: parseInt(destination.droppableId) },
+        { withCredentials: true }
+      );
+      // The position update is more complex and might need a separate endpoint
+      // For now, we are just updating the category
+    } catch (error) {
+      setError("Failed to update task. Please try again.");
+      setTasks(originalTasks); // Revert on error
+    }
   };
 
   if (loading) return <div>Loading...</div>;
