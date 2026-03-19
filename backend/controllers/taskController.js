@@ -44,21 +44,34 @@ exports.createTask = async (req, res) => {
 };
 
 exports.updateTask = async (req, res) => {
+  const { id } = req.params;
+  const { position, CategoryId, version, ...updateData } = req.body;
+  const userId = req.user.id;
+
+  if (version === undefined) {
+    return res.status(400).json({ error: "Task version is required for updates." });
+  }
+
   try {
-    const { id } = req.params;
-    const { position, CategoryId, ...updateData } = req.body;
-    const userId = req.user.id;
+    const result = await sequelize.transaction(async (t) => {
+      const task = await Task.findOne({
+        where: { id, UserId: userId },
+        transaction: t,
+      });
 
-    const task = await Task.findOne({ where: { id, UserId: userId } });
+      if (!task) {
+        // This will cause the transaction to rollback
+        throw new Error("Task not found or you do not have permission to edit it");
+      }
+      
+      if (task.version !== version) {
+        // Optimistic lock failed
+        throw new Error("Conflict: Task has been updated by another user. Please refresh and try again.");
+      }
 
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
-    }
+      const wantsToMove = (position !== undefined && position !== task.position) || (CategoryId !== undefined && CategoryId !== task.CategoryId);
 
-    const wantsToMove = (position !== undefined && position !== task.position) || (CategoryId !== undefined && CategoryId !== task.CategoryId);
-
-    if (wantsToMove) {
-      await sequelize.transaction(async (t) => {
+      if (wantsToMove) {
         const oldPosition = task.position;
         const oldCategoryId = task.CategoryId;
         const newPosition = position !== undefined ? position : task.position;
@@ -78,13 +91,11 @@ exports.updateTask = async (req, res) => {
         } else {
           // Move within the same category
           if (newPosition > oldPosition) {
-            // moving down
             await Task.update({ position: sequelize.literal("position - 1") }, {
               where: { UserId: userId, CategoryId: oldCategoryId, position: { [Op.gt]: oldPosition, [Op.lte]: newPosition } },
               transaction: t
             });
           } else {
-            // moving up
             await Task.update({ position: sequelize.literal("position + 1") }, {
               where: { UserId: userId, CategoryId: oldCategoryId, position: { [Op.lt]: oldPosition, [Op.gte]: newPosition } },
               transaction: t
@@ -93,16 +104,35 @@ exports.updateTask = async (req, res) => {
         }
         updateData.position = newPosition;
         updateData.CategoryId = newCategoryId;
-        await task.update(updateData, { transaction: t });
-      });
-    } else {
-      await task.update(updateData);
-    }
+      }
 
-    const updatedTask = await Task.findByPk(id);
-    res.json(updatedTask);
+      // Increment version and save changes
+      updateData.version = task.version + 1;
+      
+      const [updatedRows] = await Task.update(updateData, {
+          where: { id, UserId: userId, version: version }, // Re-check version
+          transaction: t
+      });
+
+      if (updatedRows === 0) {
+          throw new Error("Conflict: Task has been updated by another user during the transaction. Please refresh and try again.");
+      }
+
+      // Re-fetch the task to return the latest state
+      const updatedTask = await Task.findByPk(id, { transaction: t });
+      return updatedTask;
+    });
+
+    res.json(result);
+
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    if (error.message.startsWith("Conflict")) {
+        res.status(409).json({ error: error.message });
+    } else if (error.message.startsWith("Task not found")) {
+        res.status(404).json({ error: error.message });
+    } else {
+        res.status(400).json({ error: error.message });
+    }
   }
 };
 

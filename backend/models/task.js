@@ -34,6 +34,11 @@ module.exports = (sequelize, DataTypes) => {
     },
     deadline: {
       type: DataTypes.DATE
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
     }
   }, {
     sequelize,
