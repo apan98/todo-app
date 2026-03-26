@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -8,7 +8,7 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const history = useHistory();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,7 +21,7 @@ const Login = () => {
         },
         { withCredentials: true }
       );
-      navigate("/");
+      history.push("/");
     } catch (err) {
       setError("Invalid credentials");
     }

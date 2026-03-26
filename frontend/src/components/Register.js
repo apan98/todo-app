@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -8,13 +8,13 @@ const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const history = useHistory();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await axios.post(`${API_URL}/auth/register`, { username, password });
-      navigate("/login");
+      history.push("/login");
     } catch (err) {
       setError("Failed to register");
     }
