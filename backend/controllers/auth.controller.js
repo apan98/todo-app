@@ -1,26 +1,18 @@
 const db = require("../models");
 const config = require("../config/auth.config");
 const User = db.user;
+const { body, validationResult } = require('express-validator');
 
 var jwt = require("jsonwebtoken");
 var bcrypt = require("bcryptjs");
 
 exports.signup = (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { password, username, email } = req.body;
-
-  if (!password || password.trim() === "") {
-    return res.status(400).send({
-      message: "Password is required and cannot be empty."
-    });
-  }
-
-  // Password complexity check
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    return res.status(400).send({
-      message: "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character."
-    });
-  }
 
   // Save User to Database
   User.create({

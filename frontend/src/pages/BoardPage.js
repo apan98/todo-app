@@ -69,10 +69,8 @@ const onDragEnd = async (result) => {
     const finishColumn = data.columns[destination.droppableId];
     const movingTaskId = parseInt(draggableId);
 
-    // Store the original state
     const originalState = JSON.parse(JSON.stringify(data));
 
-    // Optimistic UI update
     const startTaskIds = Array.from(startColumn.taskIds);
     startTaskIds.splice(source.index, 1);
     const newStart = { ...startColumn, taskIds: startTaskIds };
@@ -98,28 +96,22 @@ const onDragEnd = async (result) => {
         },
     };
     setData(newState);
-    setError(null); // Clear previous errors on new action
+    setError(null);
 
     try {
-        const taskToUpdate = data.tasks[movingTaskId];
-        if (!taskToUpdate) {
-            throw new Error("Task data not found for optimistic update!");
-        }
+        const tasksToUpdate = newFinish.taskIds.map((taskId, index) => ({
+            id: taskId,
+            position: index,
+            categoryId: parseInt(newFinish.id),
+        }));
 
-        await axios.put(`/api/tasks/${movingTaskId}`, {
-            CategoryId: parseInt(destination.droppableId),
-            position: destination.index,
-            version: taskToUpdate.version, // Include version for optimistic locking
-        });
+        await axios.put('/api/tasks/reorder', { tasks: tasksToUpdate });
 
-        // If API call is successful, we can refetch data to ensure consistency
-        // or update the local task version if the API returns the updated task.
         fetchData();
 
     } catch (err) {
         console.error("Failed to reorder task", err);
         setError("Could not save task move. Reverting changes.");
-        // If the request fails, revert the state to the original data
         setData(originalState);
     }
 };

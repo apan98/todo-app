@@ -10,7 +10,7 @@ const validatePriority = (priority) => {
 
 // Create a Task
 exports.create = async (req, res) => {
-  if (!req.body.title) {
+  if (!req.body.title || req.body.title.trim() === '') {
     return res.status(400).send({ message: "Title can not be empty!" });
   }
 
@@ -156,53 +156,42 @@ exports.reorder = async (req, res) => {
     const t = await db.sequelize.transaction();
 
     try {
-        for (const taskData of tasks) {
-            const task = await Task.findOne({
-                where: {
-                    id: taskData.id,
-                    userId: req.userId
-                },
-                transaction: t
-            });
-
-            if (!task) {
-                throw new Error(`Task with id=${taskData.id} not found or you don't have permission to access it.`);
-            }
-
-            await task.update({
-                position: taskData.position,
-                categoryId: taskData.categoryId
-            }, { transaction: t });
-        }
+        const updates = tasks.map(taskData => 
+            Task.update(
+                { position: taskData.position, categoryId: taskData.categoryId },
+                { where: { id: taskData.id, userId: req.userId }, transaction: t }
+            )
+        );
+        
+        await Promise.all(updates);
 
         await t.commit();
         res.send({ message: "Tasks reordered successfully." });
     } catch (error) {
         await t.rollback();
-        if (error.message.includes("not found")) {
-            return res.status(404).send({ message: error.message });
-        }
         res.status(500).send({ message: error.message || "Error reordering tasks" });
     }
 };
 
 // Delete a Task with the specified id in the request
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   const id = req.params.id;
 
-  Task.destroy({
-    where: { id: id, userId: req.userId }
-  })
-    .then(num => {
-      if (num == 1) {
-        res.send({ message: "Task was deleted successfully!" });
-      } else {
-        res.status(404).send({
-          message: `Cannot delete Task with id=${id}. Maybe Task was not found!`
-        });
-      }
-    })
-    .catch(err => {
-      res.status(500).send({ message: "Could not delete Task with id=" + id });
+  try {
+    const task = await Task.findOne({
+      where: { id: id, userId: req.userId }
     });
+
+    if (!task) {
+      return res.status(404).send({
+        message: `Cannot delete Task with id=${id}. Maybe Task was not found!`
+      });
+    }
+
+    await task.destroy();
+    res.send({ message: "Task was deleted successfully!" });
+
+  } catch (err) {
+    res.status(500).send({ message: "Could not delete Task with id=" + id });
+  }
 };
