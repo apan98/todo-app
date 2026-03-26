@@ -67,6 +67,12 @@ exports.findOne = (req, res) => {
 exports.update = (req, res) => {
   const id = req.params.id;
 
+  if (!req.body.title) {
+    return res.status(400).send({
+      message: "Title can not be empty!"
+    });
+  }
+
   Task.update(req.body, {
     where: { id: id }
   })

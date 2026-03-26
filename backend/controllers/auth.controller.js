@@ -16,6 +16,9 @@ exports.signup = (req, res) => {
       res.send({ message: "User was registered successfully!" });
     })
     .catch(err => {
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).send({ message: "Failed! Email is already in use!" });
+      }
       res.status(500).send({ message: err.message });
     });
 };

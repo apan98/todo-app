@@ -24,7 +24,7 @@ const Board = () => {
     fetchData();
   }, []);
 
-  const onDragEnd = (result) => {
+  const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) {
@@ -40,6 +40,7 @@ const Board = () => {
 
     const start = data.categories[source.droppableId];
     const end = data.categories[destination.droppableId];
+    const originalData = { ...data };
 
     const newData = { ...data };
 
@@ -76,15 +77,16 @@ const Board = () => {
 
     setData(newData);
 
-    api.put(`/tasks/position`, {
-      source,
-      destination,
-      draggableId
-    }).catch(err => {
-        // revert state on error
-        // simplified for brevity
-        console.error("Failed to update task position", err);
-    });
+    try {
+      await api.put(`/tasks/position`, {
+        source,
+        destination,
+        draggableId
+      });
+    } catch (err) {
+      setData(originalData);
+      console.error("Failed to update task position", err);
+    }
   };
 
   if (!data) {
