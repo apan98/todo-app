@@ -250,17 +250,45 @@ exports.reorderTasks = async (req, res) => {
 };
 
 exports.deleteTask = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
   try {
-    const { id } = req.params;
-    const task = await Task.findOne({ where: { id, UserId: req.user.id } });
+    await sequelize.transaction(async (t) => {
+      const task = await Task.findOne({
+        where: { id, UserId: userId },
+        transaction: t,
+      });
 
-    if (!task) {
-      return res.status(404).json({ error: "Task not found or you do not have permission to delete it" });
-    }
+      if (!task) {
+        // We throw an error to trigger the transaction rollback
+        throw new Error("Task not found or you do not have permission to delete it");
+      }
 
-    await task.destroy();
+      const { CategoryId, position } = task;
+
+      // Now, destroy the task
+      await task.destroy({ transaction: t });
+
+      // And then, update the positions of the remaining tasks
+      await Task.update(
+        { position: sequelize.literal("position - 1") },
+        {
+          where: {
+            UserId: userId,
+            CategoryId: CategoryId,
+            position: { [Op.gt]: position },
+          },
+          transaction: t,
+        }
+      );
+    });
+
     res.status(204).send();
   } catch (error) {
+    if (error.message.startsWith("Task not found")) {
+        return res.status(404).json({ error: error.message });
+    }
     console.error('Delete Task Error:', error);
     res.status(500).json({ error: 'An unexpected error occurred on the server.' });
   }
