@@ -60,11 +60,17 @@ exports.signin = (req, res) => {
         expiresIn: 86400 // 24 hours
       });
 
+      res.cookie("accessToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 86400 * 1000
+      });
+
       res.status(200).send({
         id: user.id,
         username: user.username,
         email: user.email,
-        accessToken: token
       });
     })
     .catch(err => {
