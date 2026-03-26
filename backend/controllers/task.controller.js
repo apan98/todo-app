@@ -1,36 +1,47 @@
 const db = require("../models");
 const Task = db.tasks;
+const Category = db.categories;
 const Op = db.Sequelize.Op;
 
+const validatePriority = (priority) => {
+    const validPriorities = ['low', 'medium', 'high'];
+    return validPriorities.includes(priority);
+};
+
 // Create a Task
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   if (!req.body.title) {
     return res.status(400).send({ message: "Title can not be empty!" });
   }
 
-  const task = {
-    title: req.body.title,
-    description: req.body.description,
-    priority: req.body.priority,
-    // Ensure deadline is in UTC
-    deadline: req.body.deadline ? new Date(req.body.deadline) : null,
-    categoryId: req.body.categoryId,
-    userId: req.userId,
-    position: req.body.position || 0,
-  };
+  if (req.body.priority && !validatePriority(req.body.priority)) {
+    return res.status(400).send({ message: "Invalid priority value." });
+  }
+  
+  try {
+    if (req.body.categoryId) {
+        const category = await Category.findByPk(req.body.categoryId);
+        if (!category) {
+            return res.status(400).send({ message: "Invalid categoryId." });
+        }
+    }
 
-  Task.create(task)
-    .then(data => {
-      res.status(201).send(data);
-    })
-    .catch(err => {
-      if (err instanceof db.Sequelize.ValidationError) {
-        return res.status(400).send({ message: err.errors.map(e => e.message).join(', ') });
-      }
-      res.status(500).send({
-        message: err.message || "Some error occurred while creating the Task."
-      });
+    const task = {
+      title: req.body.title,
+      description: req.body.description,
+      priority: req.body.priority,
+      deadline: req.body.deadline,
+      categoryId: req.body.categoryId,
+      userId: req.userId
+    };
+  
+    const data = await Task.create(task);
+    res.status(201).send(data);
+  } catch (err) {
+    res.status(500).send({
+      message: err.message || "Some error occurred while creating the Task."
     });
+  }
 };
 
 const getPagination = (page, size) => {
@@ -97,57 +108,31 @@ exports.findOne = (req, res) => {
 // Update a Task by the id in the request
 exports.update = async (req, res) => {
   const id = req.params.id;
-  const { version } = req.body;
 
-  if (version === undefined) {
-      return res.status(400).send({ message: "Task version is required for update." });
+  if (req.body.priority && !validatePriority(req.body.priority)) {
+    return res.status(400).send({ message: "Invalid priority value." });
   }
 
   try {
-    const num = await db.sequelize.transaction(async (t) => {
-      const task = await Task.findOne({
-        where: { id: id, userId: req.userId },
-        transaction: t
-      });
+    if (req.body.categoryId) {
+        const category = await Category.findByPk(req.body.categoryId);
+        if (!category) {
+            return res.status(400).send({ message: "Invalid categoryId." });
+        }
+    }
 
-      if (!task) {
-        // We throw an error to be caught by the outer catch block
-        throw new Error('TaskNotFound');
-      }
-
-      if (task.version !== version) {
-        // Throw a specific error for optimistic lock failure
-        throw new Error('Conflict');
-      }
-      
-      // Increment version manually in the body
-      const updateBody = { ...req.body, version: version + 1 };
-      
-      const [affectedRows] = await Task.update(updateBody, {
-        where: { id: id, userId: req.userId, version: version },
-        transaction: t
-      });
-      return affectedRows;
+    const [num] = await Task.update(req.body, {
+      where: { id: id, userId: req.userId }
     });
 
     if (num == 1) {
       res.send({ message: "Task was updated successfully." });
     } else {
-      // This case is unlikely if the transaction logic is correct
       res.status(404).send({
-        message: `Cannot update Task with id=${id}. Maybe Task was not found or version is incorrect.`
+        message: `Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`
       });
     }
   } catch (err) {
-    if (err.message === 'TaskNotFound') {
-        return res.status(404).send({ message: `Task with id=${id} not found.` });
-    }
-    if (err.message === 'Conflict') {
-        return res.status(409).send({ message: "Update failed. The task has been modified by someone else. Please refresh and try again." });
-    }
-    if (err instanceof db.Sequelize.ValidationError) {
-      return res.status(400).send({ message: err.errors.map(e => e.message).join(', ') });
-    }
     res.status(500).send({
       message: "Error updating Task with id=" + id
     });
