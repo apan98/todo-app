@@ -8,9 +8,8 @@ const { validateTask, handleValidationErrors } = require("../middleware/validati
  
  router.get("/", taskController.getTasks);
  router.post("/", validateTask, handleValidationErrors, taskController.createTask);
+ router.put("/order", taskController.updateTasksOrder);
  router.put("/:id", validateTask, handleValidationErrors, taskController.updateTask);
- router.put("/:id/position", taskController.updateTaskPosition);
  router.delete("/:id", taskController.deleteTask);
- router.post("/dnd/reorder", taskController.reorderTasks);
 
 module.exports = router;

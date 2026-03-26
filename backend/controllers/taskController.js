@@ -3,9 +3,7 @@ const { Op } = require("sequelize");
 
 exports.getTasks = async (req, res) => {
   try {
-    const { page = 1, limit = 10, priority, search } = req.query;
-    const offset = (page - 1) * limit;
-
+    const { priority, search } = req.query;
     const whereClause = { UserId: req.user.id };
 
     if (priority && priority !== "all") {
@@ -16,16 +14,14 @@ exports.getTasks = async (req, res) => {
       whereClause.title = { [Op.iLike]: `%${search}%` };
     }
 
-    const { count, rows } = await Task.findAndCountAll({
+    const tasks = await Task.findAll({
       where: whereClause,
       order: [
         ["CategoryId", "ASC"],
         ["position", "ASC"],
       ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
     });
-    res.json({ tasks: rows, total: count, pages: Math.ceil(count / limit) });
+    res.json({ tasks });
   } catch (error) {
     console.error('Get Tasks Error:', error);
     res.status(500).json({ error: 'An unexpected error occurred on the server.' });
@@ -46,7 +42,8 @@ exports.createTask = async (req, res) => {
       dueDate,
       CategoryId,
       UserId: req.user.id,
-      position: (maxPosition === null ? 0 : maxPosition) + 1
+      position: (maxPosition === null ? -1 : maxPosition) + 1,
+      version: 0
     });
     res.status(201).json(task);
   } catch (error) {
@@ -75,15 +72,14 @@ exports.updateTask = async (req, res) => {
       const task = await Task.findOne({
         where: { id, UserId: userId },
         transaction: t,
+        lock: t.LOCK.UPDATE,
       });
 
       if (!task) {
-        // This will cause the transaction to rollback
         throw new Error("Task not found or you do not have permission to edit it");
       }
       
       if (task.version !== version) {
-        // Optimistic lock failed
         throw new Error("Conflict: Task has been updated by another user. Please refresh and try again.");
       }
 
@@ -96,18 +92,15 @@ exports.updateTask = async (req, res) => {
         const newCategoryId = CategoryId !== undefined ? CategoryId : task.CategoryId;
 
         if (oldCategoryId !== newCategoryId) {
-          // Decrement positions in old category
           await Task.update({ position: sequelize.literal("position - 1") }, {
             where: { UserId: userId, CategoryId: oldCategoryId, position: { [Op.gt]: oldPosition } },
             transaction: t
           });
-          // Increment positions in new category
           await Task.update({ position: sequelize.literal("position + 1") }, {
             where: { UserId: userId, CategoryId: newCategoryId, position: { [Op.gte]: newPosition } },
             transaction: t
           });
         } else {
-          // Move within the same category
           if (newPosition > oldPosition) {
             await Task.update({ position: sequelize.literal("position - 1") }, {
               where: { UserId: userId, CategoryId: oldCategoryId, position: { [Op.gt]: oldPosition, [Op.lte]: newPosition } },
@@ -124,11 +117,10 @@ exports.updateTask = async (req, res) => {
         updateData.CategoryId = newCategoryId;
       }
 
-      // Increment version and save changes
       updateData.version = task.version + 1;
       
       const [updatedRows] = await Task.update(updateData, {
-          where: { id, UserId: userId, version: version }, // Re-check version
+          where: { id, UserId: userId, version: version },
           transaction: t
       });
 
@@ -136,7 +128,6 @@ exports.updateTask = async (req, res) => {
           throw new Error("Conflict: Task has been updated by another user during the transaction. Please refresh and try again.");
       }
 
-      // Re-fetch the task to return the latest state
       const updatedTask = await Task.findByPk(id, { transaction: t });
       return updatedTask;
     });
@@ -159,92 +150,40 @@ exports.updateTask = async (req, res) => {
   }
 };
 
-exports.updateTaskPosition = async (req, res) => {
-  // This endpoint is now effectively handled by updateTask.
-  // We can consider this a redirect of logic.
-  return exports.updateTask(req, res);
-};
-
-exports.reorderTasks = async (req, res) => {
-    const { source, destination, draggableId } = req.body;
+exports.updateTasksOrder = async (req, res) => {
+    const { tasks } = req.body;
     const userId = req.user.id;
 
-    if (!destination) {
-        return res.status(400).json({ error: "Invalid destination" });
+    if (!Array.isArray(tasks)) {
+        return res.status(400).json({ error: "Invalid request body. Expected an array of tasks." });
+    }
+
+    const taskIds = tasks.map(t => t.id);
+    const uniqueTaskIds = new Set(taskIds);
+
+    if (taskIds.length !== uniqueTaskIds.size) {
+        return res.status(400).json({ error: "Invalid request. Duplicate task IDs found in the request." });
     }
 
     try {
         await sequelize.transaction(async (t) => {
-            const task = await Task.findOne({ where: { id: draggableId, UserId: userId }, transaction: t });
-            if (!task) {
-                throw new Error("Task not found");
-            }
-
-            const oldCategoryId = source.droppableId;
-            const newCategoryId = destination.droppableId;
-            const oldPosition = source.index;
-            const newPosition = destination.index;
-
-            if (oldCategoryId === newCategoryId) {
-                // Moving within the same category
-                if (newPosition > oldPosition) {
-                    await Task.update({ position: sequelize.literal('position - 1') }, {
-                        where: {
-                            UserId: userId,
-                            CategoryId: oldCategoryId,
-                            position: {
-                                [Op.gt]: oldPosition,
-                                [Op.lte]: newPosition,
-                            },
-                        },
-                        transaction: t
-                    });
-                } else { // newPosition < oldPosition
-                    await Task.update({ position: sequelize.literal('position + 1') }, {
-                        where: {
-                            UserId: userId,
-                            CategoryId: oldCategoryId,
-                            position: {
-                                [Op.lt]: oldPosition,
-                                [Op.gte]: newPosition,
-                            },
-                        },
-                        transaction: t
-                    });
-                }
-            } else {
-                // Moving to a different category
-                // Decrement positions in old category
-                await Task.update({ position: sequelize.literal('position - 1') }, {
-                    where: {
-                        UserId: userId,
-                        CategoryId: oldCategoryId,
-                        position: { [Op.gt]: oldPosition },
+            for (const task of tasks) {
+                await Task.update(
+                    { 
+                        position: task.position,
+                        CategoryId: task.CategoryId,
+                        version: sequelize.literal('version + 1')
                     },
-                    transaction: t
-                });
-
-                // Increment positions in new category
-                await Task.update({ position: sequelize.literal('position + 1') }, {
-                    where: {
-                        UserId: userId,
-                        CategoryId: newCategoryId,
-                        position: { [Op.gte]: newPosition },
-                    },
-                    transaction: t
-                });
+                    { 
+                        where: { id: task.id, UserId: userId },
+                        transaction: t 
+                    }
+                );
             }
-
-            // Finally, update the moved task
-            await task.update({
-                CategoryId: newCategoryId,
-                position: newPosition
-            }, { transaction: t });
         });
-
-        res.status(200).json({ message: "Tasks reordered successfully" });
+        res.status(200).json({ message: "Tasks order updated successfully" });
     } catch (error) {
-        console.error('Reorder Tasks Error:', error);
+        console.error('Update Tasks Order Error:', error);
         res.status(500).json({ error: 'An unexpected error occurred on the server.' });
     }
 };
@@ -261,16 +200,13 @@ exports.deleteTask = async (req, res) => {
       });
 
       if (!task) {
-        // We throw an error to trigger the transaction rollback
         throw new Error("Task not found or you do not have permission to delete it");
       }
 
       const { CategoryId, position } = task;
 
-      // Now, destroy the task
       await task.destroy({ transaction: t });
 
-      // And then, update the positions of the remaining tasks
       await Task.update(
         { position: sequelize.literal("position - 1") },
         {
