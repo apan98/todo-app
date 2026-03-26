@@ -38,6 +38,9 @@ exports.create = async (req, res) => {
     const data = await Task.create(task);
     res.status(201).send(data);
   } catch (err) {
+    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
+      return res.status(400).send({ message: err.message });
+    }
     res.status(500).send({
       message: err.message || "Some error occurred while creating the Task."
     });
@@ -133,6 +136,9 @@ exports.update = async (req, res) => {
       });
     }
   } catch (err) {
+    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
+      return res.status(400).send({ message: err.message });
+    }
     res.status(500).send({
       message: "Error updating Task with id=" + id
     });
@@ -140,8 +146,13 @@ exports.update = async (req, res) => {
 };
 
 // Update task position (drag and drop)
-exports.updatePosition = async (req, res) => {
+exports.reorder = async (req, res) => {
     const { draggableId, source, destination, version } = req.body;
+
+    if (!draggableId || !source || !destination) {
+        return res.status(400).send({ message: "Invalid request body." });
+    }
+    
     const taskId = draggableId;
 
     if (version === undefined) {
