@@ -1,29 +1,23 @@
-const { Sequelize } = require("sequelize");
+const User = require("./User");
+const Task = require("./Task");
+const Category = require("./Category");
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: "postgres",
-  protocol: 'postgres',
-  dialectOptions: {
-    ssl: process.env.DB_SSL === 'true' ? {
-      require: true,
-      rejectUnauthorized: false
-    } : false
-  }
+User.hasMany(Task, {
+  foreignKey: "user_id",
+  onDelete: "CASCADE",
 });
 
-const db = {};
+Task.belongsTo(User, {
+  foreignKey: "user_id",
+});
 
-db.Sequelize = Sequelize;
-db.sequelize = sequelize;
+Category.hasMany(Task, {
+  foreignKey: "category_id",
+  onDelete: "CASCADE",
+});
 
-db.users = require("./User.js")(sequelize, Sequelize);
-db.tasks = require("./Task.js")(sequelize, Sequelize);
-db.categories = require("./Category.js")(sequelize, Sequelize);
+Task.belongsTo(Category, {
+  foreignKey: "category_id",
+});
 
-db.users.hasMany(db.tasks);
-db.tasks.belongsTo(db.users);
-
-db.categories.hasMany(db.tasks);
-db.tasks.belongsTo(db.categories);
-
-module.exports = db;
+module.exports = { User, Task, Category };

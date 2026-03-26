@@ -1,28 +1,28 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
-module.exports = (sequelize, DataTypes) => {
-  class Category extends Model {
-    static associate(models) {
-      Category.hasMany(models.Task, { foreignKey: 'categoryId', as: 'tasks' });
-      Category.belongsTo(models.User, { foreignKey: 'userId' });
-    }
-  }
-  Category.init({
-    name: DataTypes.STRING,
-    order: DataTypes.INTEGER,
-    userId: {
-      type: DataTypes.UUID,
+const { Model, DataTypes } = require("sequelize");
+const sequelize = require("../config/config");
+
+class Category extends Model {}
+
+Category.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
       allowNull: false,
-      references: {
-        model: 'Users',
-        key: 'id'
-      }
-    }
-  }, {
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
     sequelize,
-    modelName: 'Category',
-  });
-  return Category;
-};
+    timestamps: false,
+    freezeTableName: true,
+    underscored: true,
+    modelName: "category",
+  }
+);
+
+module.exports = Category;

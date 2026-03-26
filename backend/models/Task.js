@@ -1,51 +1,55 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
-module.exports = (sequelize, DataTypes) => {
-  class Task extends Model {
-    static associate(models) {
-      Task.belongsTo(models.User, { foreignKey: 'userId', onDelete: 'CASCADE' });
-      Task.belongsTo(models.Category, { foreignKey: 'categoryId' });
-    }
-  }
-  Task.init({
+const { Model, DataTypes } = require("sequelize");
+const sequelize = require("../config/config");
+
+class Task extends Model {}
+
+Task.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
+    },
     title: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            notEmpty: true,
-            len: [1, 255]
-        }
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     description: {
-        type: DataTypes.TEXT,
-        validate: {
-            len: [0, 5000]
-        }
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     priority: {
-        type: DataTypes.ENUM('low', 'medium', 'high'),
-        defaultValue: 'medium'
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "medium",
     },
-    deadline: DataTypes.DATE,
-    order: DataTypes.INTEGER,
-    userId: DataTypes.INTEGER,
-    categoryId: DataTypes.INTEGER,
-    version: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-    }
-  }, {
+    deadline: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    categoryId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "category",
+        key: "id",
+      },
+    },
+    userId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: "user",
+        key: "id",
+      },
+    },
+  },
+  {
     sequelize,
-    modelName: 'Task',
-    indexes: [
-      {
-        unique: true,
-        fields: ['userId', 'categoryId', 'order']
-      }
-    ]
-  });
-  return Task;
-};
+    timestamps: false,
+    freezeTableName: true,
+    underscored: true,
+    modelName: "task",
+  }
+);
+
+module.exports = Task;

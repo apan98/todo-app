@@ -1,25 +1,20 @@
-'use strict';
-const {
-  Model, UUIDV4
-} = require('sequelize');
-const bcrypt = require('bcryptjs');
+const { Model, DataTypes } = require("sequelize");
+const sequelize = require("../config/config");
+const bcrypt = require("bcryptjs");
 
-module.exports = (sequelize, DataTypes) => {
-  class User extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
-    static associate(models) {
-      User.hasMany(models.Task, { foreignKey: 'userId', onDelete: 'CASCADE' });
-    }
+class User extends Model {
+  checkPassword(loginPw) {
+    return bcrypt.compareSync(loginPw, this.password);
   }
-  User.init({
+}
+
+User.init(
+  {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: UUIDV4,
-      primaryKey: true
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false,
     },
     username: {
       type: DataTypes.STRING,
@@ -29,27 +24,31 @@ module.exports = (sequelize, DataTypes) => {
     password: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
-  }, {
-    sequelize,
-    modelName: 'User',
-    hooks: {
-      beforeCreate: async (user) => {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+      validate: {
+        len: [8],
       },
     },
-  });
+  },
+  {
+    hooks: {
+      beforeCreate: async (newUserData) => {
+        newUserData.password = await bcrypt.hash(newUserData.password, 10);
+        return newUserData;
+      },
+      beforeUpdate: async (updatedUserData) => {
+        updatedUserData.password = await bcrypt.hash(
+          updatedUserData.password,
+          10
+        );
+        return updatedUserData;
+      },
+    },
+    sequelize,
+    timestamps: false,
+    freezeTableName: true,
+    underscored: true,
+    modelName: "user",
+  }
+);
 
-  User.prototype.validPassword = async function (password) {
-    return await bcrypt.compare(password, this.password);
-  };
-
-  User.prototype.toJSON = function () {
-    const values = { ...this.get() };
-    delete values.password;
-    return values;
-  };
-
-  return User;
-};
+module.exports = User;

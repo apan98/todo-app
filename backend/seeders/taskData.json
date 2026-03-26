@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Finish project proposal",
+    "description": "Write and submit the project proposal",
+    "priority": "high",
+    "deadline": "2024-06-01T00:00:00.000Z",
+    "categoryId": 1,
+    "userId": 1
+  },
+  {
+    "title": "Schedule team meeting",
+    "description": "Organize a meeting with the development team",
+    "priority": "medium",
+    "deadline": "2024-05-20T00:00:00.000Z",
+    "categoryId": 1,
+    "userId": 1
+  },
+  {
+    "title": "Deploy to production",
+    "description": "Deploy the latest version of the application to the production server.",
+    "priority": "high",
+    "deadline": "2024-05-22T00:00:00.000Z",
+    "categoryId": 3,
+    "userId": 1
+  }
+]
