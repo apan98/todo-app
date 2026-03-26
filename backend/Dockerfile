@@ -17,8 +17,8 @@ COPY . .
 EXPOSE 5000
 
 # Define environment variables
-ENV DATABASE_URL=postgres://user:password@postgres:5432/todo_db
-ENV JWT_SECRET=your_jwt_secret
+ENV DATABASE_URL=${DATABASE_URL}
+ENV JWT_SECRET=${JWT_SECRET}
 
 # Run app when the container launches
 CMD ["npm", "start"]

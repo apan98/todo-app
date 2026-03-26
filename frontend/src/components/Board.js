@@ -135,7 +135,6 @@ const Board = () => {
       const errorMessage = err.response?.data?.message || "Failed to update task position";
       setError(errorMessage);
       console.error(errorMessage, err);
-      alert(errorMessage);
       setData(originalData); // Revert on failure
     }
   };
