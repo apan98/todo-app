@@ -9,56 +9,64 @@ const validatePriority = (priority) => {
     return validPriorities.includes(priority);
 };
 
+const { body, validationResult } = require('express-validator');
+const sanitizeHtml = require('sanitize-html');
+
 // Create a Task
-exports.create = async (req, res) => {
-  if (!req.body.title || req.body.title.trim() === '') {
-    return res.status(400).send({ message: "Title can not be empty!" });
-  }
-
-  if (req.body.priority && !validatePriority(req.body.priority)) {
-    return res.status(400).send({ message: "Invalid priority value." });
-  }
-  
-  const t = await sequelize.transaction();
-
-  try {
-    if (req.body.categoryId) {
-        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id }, transaction: t });
-        if (!category) {
-            await t.rollback();
-            return res.status(400).send({ message: "Invalid categoryId." });
-        }
+exports.create = [
+  body('title').trim().notEmpty().withMessage('Title can not be empty!').customSanitizer(value => sanitizeHtml(value)),
+  body('description').trim().customSanitizer(value => sanitizeHtml(value)),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    const maxOrder = await Task.max('order', {
-      where: { categoryId: req.body.categoryId, userId: req.user.id },
-      transaction: t
-    });
-
-    const task = {
-      title: req.body.title,
-      description: req.body.description,
-      priority: req.body.priority,
-      deadline: req.body.deadline,
-      categoryId: req.body.categoryId,
-      userId: req.user.id,
-      order: (maxOrder === null) ? 0 : maxOrder + 1
-    };
-  
-    const data = await Task.create(task, { transaction: t });
-    await t.commit();
-    res.status(201).send(data);
-  } catch (err) {
-    await t.rollback();
-    console.error('Error in create task:', err);
-    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
-      return res.status(400).send({ message: err.message });
+    if (req.body.priority && !validatePriority(req.body.priority)) {
+      return res.status(400).send({ message: "Invalid priority value." });
     }
-    res.status(500).send({
-      message: err.message || "Some error occurred while creating the Task."
-    });
+    
+    const t = await sequelize.transaction();
+
+    try {
+      if (req.body.categoryId) {
+          const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id }, transaction: t });
+          if (!category) {
+              await t.rollback();
+              return res.status(400).send({ message: "Invalid categoryId." });
+          }
+      }
+
+      const maxOrder = await Task.max('order', {
+        where: { categoryId: req.body.categoryId, userId: req.user.id },
+        transaction: t
+      });
+
+      const task = {
+        title: req.body.title,
+        description: req.body.description,
+        priority: req.body.priority,
+        deadline: req.body.deadline,
+        categoryId: req.body.categoryId,
+        userId: req.user.id,
+        order: (maxOrder === null) ? 0 : maxOrder + 1
+      };
+    
+      const data = await Task.create(task, { transaction: t });
+      await t.commit();
+      res.status(201).send(data);
+    } catch (err) {
+      await t.rollback();
+      console.error('Error in create task:', err);
+      if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
+        return res.status(400).send({ message: err.message });
+      }
+      res.status(500).send({
+        message: err.message || "Some error occurred while creating the Task."
+      });
+    }
   }
-};
+];
 
 const getPagination = (page, size) => {
   const limit = size ? +size : 30;
@@ -124,47 +132,91 @@ exports.findOne = (req, res) => {
 };
 
 // Update a Task by the id in the request
-exports.update = async (req, res) => {
-  const id = req.params.id;
+exports.update = [
+  body('title').optional().trim().customSanitizer(value => sanitizeHtml(value)),
+  body('description').optional().trim().customSanitizer(value => sanitizeHtml(value)),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const id = req.params.id;
 
-  if (req.body.priority && !validatePriority(req.body.priority)) {
-    return res.status(400).send({ message: "Invalid priority value." });
-  }
-
-  try {
-    const task = await Task.findOne({ where: { id: id, userId: req.user.id } });
-    if (!task) {
-      return res.status(404).send({ message: `Cannot find Task with id=${id}.` });
+    if (req.body.priority && !validatePriority(req.body.priority)) {
+      return res.status(400).send({ message: "Invalid priority value." });
     }
 
-    if (req.body.categoryId) {
-        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id } });
-        if (!category) {
-            return res.status(400).send({ message: "Invalid categoryId." });
-        }
-    }
+    const t = await sequelize.transaction();
 
-    const [num] = await Task.update(req.body, {
-      where: { id: id, userId: req.user.id }
-    });
+    try {
+      const task = await Task.findOne({ where: { id: id, userId: req.user.id }, transaction: t });
+      if (!task) {
+        await t.rollback();
+        return res.status(404).send({ message: `Cannot find Task with id=${id}.` });
+      }
 
-    if (num == 1) {
-      res.send({ message: "Task was updated successfully." });
-    } else {
-      res.status(404).send({
-        message: `Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`
+      const oldCategoryId = task.categoryId;
+      const newCategoryId = req.body.categoryId;
+      const newPosition = req.body.order;
+
+      if (newCategoryId !== undefined && newPosition !== undefined) {
+        // Logic for drag-and-drop reordering
+        
+        // 1. Decrement order for tasks in the old category
+        await Task.update(
+          { order: sequelize.literal('"order" - 1') },
+          { 
+            where: { 
+              categoryId: oldCategoryId, 
+              userId: req.user.id,
+              order: { [Op.gt]: task.order }
+            },
+            transaction: t
+          }
+        );
+
+        // 2. Increment order for tasks in the new category
+        await Task.update(
+          { order: sequelize.literal('"order" + 1') },
+          { 
+            where: { 
+              categoryId: newCategoryId, 
+              userId: req.user.id,
+              order: { [Op.gte]: newPosition }
+            },
+            transaction: t
+          }
+        );
+      }
+      
+      // 3. Update the task itself
+      const [num] = await Task.update(req.body, {
+        where: { id: id, userId: req.user.id },
+        transaction: t
+      });
+
+      if (num == 1) {
+        await t.commit();
+        res.send({ message: "Task was updated successfully." });
+      } else {
+        await t.rollback();
+        res.status(404).send({
+          message: `Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`
+        });
+      }
+    } catch (err) {
+      await t.rollback();
+      console.error(`Error updating Task with id=${id}:`, err);
+      if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
+        return res.status(400).send({ message: err.message });
+      }
+      res.status(500).send({
+        message: "Error updating Task with id=" + id
       });
     }
-  } catch (err) {
-    console.error(`Error updating Task with id=${id}:`, err);
-    if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
-      return res.status(400).send({ message: err.message });
-    }
-    res.status(500).send({
-      message: "Error updating Task with id=" + id
-    });
   }
-};
+];
 
 // Update task order (drag and drop)
 exports.updateOrder = async (req, res) => {

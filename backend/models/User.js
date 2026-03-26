@@ -26,6 +26,7 @@ User.init(
       allowNull: false,
       validate: {
         len: [8],
+        is: /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/i
       },
     },
   },

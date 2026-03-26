@@ -7,30 +7,39 @@ const BlacklistedToken = require('../models/BlacklistedToken');
 var jwt = require("jsonwebtoken");
 var bcrypt = require("bcryptjs");
 
-exports.signup = (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+exports.signup = [
+  // Validate and sanitize fields.
+  body('username', 'Username must be at least 3 chars long').isLength({ min: 3 }).trim().escape(),
+  body('email', 'Please include a valid email').isEmail().normalizeEmail(),
+  body('password', 'Password must be at least 8 characters long and contain at least one number, one uppercase and one lowercase letter')
+    .isLength({ min: 8 })
+    .matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{8,}$/, "i"),
 
-  const { password, username, email } = req.body;
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  // Save User to Database
-  User.create({
-    username: username,
-    email: email,
-    password: bcrypt.hashSync(password, 8)
-  })
-    .then(user => {
-      res.send({ message: "User was registered successfully!" });
+    const { password, username, email } = req.body;
+
+    // Save User to Database
+    User.create({
+      username: username,
+      email: email,
+      password: bcrypt.hashSync(password, 8)
     })
-    .catch(err => {
-      if (err.name === 'SequelizeUniqueConstraintError') {
-        return res.status(409).send({ message: "Failed! Email is already in use!" });
-      }
-      res.status(500).send({ message: err.message });
-    });
-};
+      .then(user => {
+        res.send({ message: "User was registered successfully!" });
+      })
+      .catch(err => {
+        if (err.name === 'SequelizeUniqueConstraintError') {
+          return res.status(409).send({ message: "Failed! Email is already in use!" });
+        }
+        res.status(500).send({ message: err.message });
+      });
+  }
+];
 
 exports.signin = (req, res) => {
   User.findOne({

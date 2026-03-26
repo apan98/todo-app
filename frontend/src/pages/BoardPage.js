@@ -69,23 +69,17 @@ const onDragEnd = async (result) => {
     const finishColumn = data.columns[destination.droppableId];
     const movingTaskId = parseInt(draggableId);
 
+    // Create a deep copy of the state for optimistic update and potential rollback
     const originalState = JSON.parse(JSON.stringify(data));
 
+    // Optimistically update UI
     const startTaskIds = Array.from(startColumn.taskIds);
     startTaskIds.splice(source.index, 1);
     const newStart = { ...startColumn, taskIds: startTaskIds };
 
-    let newFinish;
-    if (startColumn === finishColumn) {
-        const newTaskIds = Array.from(startColumn.taskIds);
-        newTaskIds.splice(source.index, 1);
-        newTaskIds.splice(destination.index, 0, movingTaskId);
-        newFinish = { ...startColumn, taskIds: newTaskIds };
-    } else {
-        const finishTaskIds = Array.from(finishColumn.taskIds);
-        finishTaskIds.splice(destination.index, 0, movingTaskId);
-        newFinish = { ...finishColumn, taskIds: finishTaskIds };
-    }
+    const finishTaskIds = Array.from(finishColumn.taskIds);
+    finishTaskIds.splice(destination.index, 0, movingTaskId);
+    const newFinish = { ...finishColumn, taskIds: finishTaskIds };
 
     const newState = {
         ...data,
@@ -96,23 +90,20 @@ const onDragEnd = async (result) => {
         },
     };
     setData(newState);
-    setError(null);
 
     try {
-        const tasksToUpdate = newFinish.taskIds.map((taskId, index) => ({
-            id: taskId,
-            position: index,
-            categoryId: parseInt(newFinish.id),
-        }));
-
-        await axios.put('/api/tasks/reorder', { tasks: tasksToUpdate });
-
-        fetchData();
-
+        await axios.put(`/api/tasks/${movingTaskId}`, {
+            categoryId: parseInt(destination.droppableId),
+            order: destination.index,
+        });
+        // Optionally, refetch data to ensure consistency
+        // await fetchData(); 
     } catch (err) {
-        console.error("Failed to reorder task", err);
-        setError("Could not save task move. Reverting changes.");
+        console.error("Failed to update task position", err);
+        // If the API call fails, revert the UI to the original state
         setData(originalState);
+        // Optionally, show an error message to the user
+        alert("Failed to move the task. Please try again.");
     }
 };
   
