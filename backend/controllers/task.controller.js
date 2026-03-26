@@ -61,7 +61,7 @@ exports.create = async (req, res) => {
 };
 
 const getPagination = (page, size) => {
-  const limit = size ? +size : 100; // Return up to 100 tasks by default
+  const limit = size ? +size : 30;
   const offset = page ? (page - 1) * limit : 0;
   return { limit, offset };
 };
