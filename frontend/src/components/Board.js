@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "./Board.css";
-
-const API_URL = "http://localhost:5000/api";
 
 const Board = () => {
   const [tasks, setTasks] = useState([]);
@@ -16,14 +14,14 @@ const Board = () => {
       try {
         setLoading(true);
         const [tasksRes, categoriesRes] = await Promise.all([
-          axios.get(`${API_URL}/tasks`, { withCredentials: true }),
-          axios.get(`${API_URL}/categories`, { withCredentials: true }),
+          api.get("/tasks"),
+          api.get("/categories"),
         ]);
-        setTasks(tasksRes.data);
+        setTasks(tasksRes.data.tasks); // tasks are nested under 'tasks' key
         setCategories(categoriesRes.data);
         setLoading(false);
       } catch (err) {
-        setError("Failed to fetch data");
+        setError("Failed to fetch data. You might need to log in.");
         setLoading(false);
       }
     };
@@ -44,52 +42,64 @@ const Board = () => {
       return;
     }
 
-    const originalTasks = [...tasks];
+    const sourceCategoryId = parseInt(source.droppableId);
+    const destCategoryId = parseInt(destination.droppableId);
     
-    const movedTask = originalTasks.find(t => t.id === parseInt(draggableId));
+    // Create a deep copy for optimistic update
+    const originalTasks = JSON.parse(JSON.stringify(tasks));
     
-    // Optimistically update the state
-    const sourceColumnTasks = Array.from(originalTasks.filter(t => t.CategoryId === parseInt(source.droppableId)));
-    const [removed] = sourceColumnTasks.splice(source.index, 1);
-    
-    let newTasks = [...originalTasks];
+    // Find the task being moved
+    const taskToMove = tasks.find(t => t.id === parseInt(draggableId));
+    if (!taskToMove) return;
 
-    if (source.droppableId === destination.droppableId) {
-        sourceColumnTasks.splice(destination.index, 0, removed);
-        const otherTasks = originalTasks.filter(t => t.CategoryId !== parseInt(source.droppableId));
-        newTasks = [...otherTasks, ...sourceColumnTasks.map((t, index) => ({...t, position: index}))];
-    } else {
-        const destinationColumnTasks = Array.from(originalTasks.filter(t => t.CategoryId === parseInt(destination.droppableId)));
-        destinationColumnTasks.splice(destination.index, 0, removed);
-        
-        const otherTasks = originalTasks.filter(t => t.CategoryId !== parseInt(source.droppableId) && t.CategoryId !== parseInt(destination.droppableId));
-        
-        newTasks = [
-            ...otherTasks, 
-            ...sourceColumnTasks.map((t, index) => ({...t, position: index})),
-            ...destinationColumnTasks.map((t, index) => ({...t, CategoryId: parseInt(destination.droppableId), position: index}))
-        ];
-    }
+    // Remove task from its original position
+    let tasksInSourceCol = tasks.filter(t => t.CategoryId === sourceCategoryId);
+    tasksInSourceCol.splice(source.index, 1);
+
+    // Add task to its new position
+    let tasksInDestCol = (sourceCategoryId === destCategoryId) 
+        ? tasksInSourceCol 
+        : tasks.filter(t => t.CategoryId === destCategoryId);
+    tasksInDestCol.splice(destination.index, 0, taskToMove);
+
+    // Update positions for all affected tasks
+    const updatePositions = (taskArray, categoryId) => {
+        return taskArray.map((task, index) => ({
+            ...task,
+            position: index,
+            CategoryId: categoryId
+        }));
+    };
     
-    setTasks(newTasks);
+    const updatedSourceCol = updatePositions(tasksInSourceCol, sourceCategoryId);
+    let finalTasks = tasks.filter(t => t.CategoryId !== sourceCategoryId && t.CategoryId !== destCategoryId);
+    
+    if (sourceCategoryId === destCategoryId) {
+        finalTasks.push(...updatedSourceCol);
+    } else {
+        const updatedDestCol = updatePositions(tasksInDestCol, destCategoryId);
+        finalTasks.push(...updatedSourceCol, ...updatedDestCol);
+    }
+
+    setTasks(finalTasks); // Optimistic UI update
+
+    // Prepare data for the backend
+    const tasksToUpdate = (sourceCategoryId === destCategoryId) 
+        ? updatedSourceCol 
+        : [...updatedSourceCol, ...updatedDestCol];
+    
+    if (tasksToUpdate.length === 0) return;
 
     try {
-      await axios.put(
-        `${API_URL}/tasks/${draggableId}`,
-        { 
-            CategoryId: parseInt(destination.droppableId),
-            position: destination.index
-        },
-        { withCredentials: true }
-      );
-    } catch (error) {
-      setError("Failed to update task. Please try again.");
-      setTasks(originalTasks); // Revert on error
+        await api.put("/tasks/order", { tasks: tasksToUpdate });
+    } catch (err) {
+        setError("Failed to update task order. Reverting changes.");
+        setTasks(originalTasks); // Revert on error
     }
   };
 
   if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
@@ -121,9 +131,9 @@ const Board = () => {
                         >
                           <h4>{task.title}</h4>
                           <p>{task.description}</p>
-                          <small>
+                          {task.dueDate && <small>
                             Due: {new Date(task.dueDate).toLocaleDateString()}
-                          </small>
+                          </small>}
                         </div>
                       )}
                     </Draggable>

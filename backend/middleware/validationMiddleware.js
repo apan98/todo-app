@@ -1,4 +1,4 @@
-const { body, validationResult } = require('express-validator');
+import { body, validationResult } = require('express-validator');
 
 exports.validateTask = [
   body('title')
@@ -8,7 +8,8 @@ exports.validateTask = [
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters'),
   body('priority')
-    .optional()
+    .notEmpty()
+    .withMessage('Priority is required')
     .isIn(['low', 'medium', 'high'])
     .withMessage('Priority must be one of: low, medium, high'),
   body('dueDate')
@@ -20,6 +21,20 @@ exports.validateTask = [
     .withMessage('CategoryId is required')
     .isInt()
     .withMessage('CategoryId must be an integer'),
+  body('position')
+    .notEmpty()
+    .withMessage('Position is required')
+    .isInt()
+    .withMessage('Position must be an integer'),
+];
+
+exports.validateCategory = [
+    body('name')
+        .trim()
+        .notEmpty()
+        .withMessage('Category name is required')
+        .isLength({ min: 1, max: 50 })
+        .withMessage('Category name must be between 1 and 50 characters'),
 ];
 
 exports.handleValidationErrors = (req, res, next) => {

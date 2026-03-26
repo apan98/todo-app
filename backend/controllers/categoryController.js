@@ -2,11 +2,29 @@ const { Category } = require("../models");
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.findAll();
+    const categories = await Category.findAll({
+      order: [
+        ['position', 'ASC']
+      ]
+    });
     res.json(categories);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: "An error occurred while fetching categories." });
   }
+};
+
+exports.createCategory = async (req, res) => {
+    try {
+        const { name } = req.body;
+        const maxPosition = await Category.max('position');
+        const newCategory = await Category.create({
+            name,
+            position: (maxPosition === null ? -1 : maxPosition) + 1
+        });
+        res.status(201).json(newCategory);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
 };
 
 exports.deleteCategory = async (req, res) => {

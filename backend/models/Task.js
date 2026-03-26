@@ -4,22 +4,27 @@ const {
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Task extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      Task.belongsTo(models.User, { foreignKey: 'userId' });
-      Task.belongsTo(models.Category, { foreignKey: 'categoryId' });
+      Task.belongsTo(models.User, { foreignKey: 'UserId' }); // Corrected foreignKey
+      Task.belongsTo(models.Category, { foreignKey: 'CategoryId' }); // Corrected foreignKey
     }
   }
   Task.init({
     title: DataTypes.STRING,
     description: DataTypes.TEXT,
-    priority: DataTypes.ENUM('low', 'medium', 'high'),
+    priority: {
+        type: DataTypes.ENUM('low', 'medium', 'high'),
+        defaultValue: 'medium'
+    },
     dueDate: DataTypes.DATE,
-    position: DataTypes.INTEGER
+    position: DataTypes.INTEGER,
+    UserId: DataTypes.INTEGER, // Explicitly define foreign key
+    CategoryId: DataTypes.INTEGER, // Explicitly define foreign key
+    version: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    }
   }, {
     sequelize,
     modelName: 'Task',

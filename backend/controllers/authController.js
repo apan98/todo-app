@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
 const bcrypt = require('bcryptjs');
@@ -35,11 +36,20 @@ exports.login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
+    
+    const csrfToken = crypto.randomBytes(100).toString('hex');
+
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
     });
+
+    res.cookie("csrf-token", csrfToken, {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
     res.json({ message: "Login successful" });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -52,6 +62,7 @@ exports.logout = (req, res) => {
     tokenBlocklist.add(token);
   }
   res.clearCookie("token");
+  res.clearCookie("csrf-token");
   res.json({ message: "Logout successful" });
 };
 
