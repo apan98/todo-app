@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { DragDropContext } from 'react-beautiful-dnd';
 import Column from '../components/Column';
+import Logout from '../components/Logout';
 
 // Set credentials to true to allow cookies to be sent
 axios.defaults.withCredentials = true;
@@ -131,6 +132,7 @@ const onDragEnd = async (result) => {
 
   return (
     <div>
+        <Logout />
         {error && <div style={{ color: 'red', padding: '10px' }}>{error}</div>}
         <div style={{ padding: '10px', display: 'flex', gap: '20px' }}>
             <input 

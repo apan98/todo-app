@@ -30,7 +30,7 @@ const Board = () => {
     fetchData();
   }, []);
 
-  const onDragEnd = (result) => {
+  const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) {
@@ -44,26 +44,15 @@ const Board = () => {
       return;
     }
 
-    const updatedTasks = Array.from(tasks);
-    const task = updatedTasks.find((t) => t.id === parseInt(draggableId));
-    task.CategoryId = parseInt(destination.droppableId);
-
-    const tasksInDestination = updatedTasks.filter(
-      (t) => t.CategoryId === parseInt(destination.droppableId)
-    );
-    tasksInDestination.splice(source.index, 1);
-    tasksInDestination.splice(destination.index, 0, task);
-
-    const updatedPositions = tasksInDestination.map((t, index) => ({
-      ...t,
-      position: index,
-    }));
-
-    const otherTasks = updatedTasks.filter(
-      (t) => t.CategoryId !== parseInt(destination.droppableId)
-    );
-    const newTasks = [...otherTasks, ...updatedPositions];
     const originalTasks = tasks;
+    
+    const movedTask = originalTasks.find(t => t.id === parseInt(draggableId));
+    const updatedTask = { ...movedTask, CategoryId: parseInt(destination.droppableId) };
+
+    const newTasks = originalTasks.map(t =>
+      t.id === parseInt(draggableId) ? updatedTask : t
+    );
+    
     setTasks(newTasks);
 
     try {
@@ -72,8 +61,6 @@ const Board = () => {
         { CategoryId: parseInt(destination.droppableId) },
         { withCredentials: true }
       );
-      // The position update is more complex and might need a separate endpoint
-      // For now, we are just updating the category
     } catch (error) {
       setError("Failed to update task. Please try again.");
       setTasks(originalTasks); // Revert on error
