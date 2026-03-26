@@ -1,31 +1,46 @@
 const express = require("express");
 const cors = require("cors");
-const cookieParser = require("cookie-parser");
 const db = require("./models");
-const authRoutes = require("./routes/auth");
-const taskRoutes = require("./routes/tasks");
-const categoryRoutes = require("./routes/categories");
-
-require("dotenv").config();
 
 const app = express();
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  })
-);
+
+app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/tasks", taskRoutes);
-app.use("/api/categories", categoryRoutes);
-
-const PORT = process.env.PORT || 5000;
-
-db.sequelize.sync().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+// simple route
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to todo application." });
 });
+
+// routes
+require('./routes/auth.routes')(app);
+require('./routes/task.routes')(app);
+
+// set port, listen for requests
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}.`);
+});
+
+const Category = db.categories;
+
+db.sequelize.sync({ force: true }).then(() => {
+    console.log("Drop and re-sync db.");
+    initial();
+});
+
+function initial() {
+    Category.create({
+        id: 1,
+        title: "To Do"
+    });
+    Category.create({
+        id: 2,
+        title: "In Progress"
+    });
+    Category.create({
+        id: 3,
+        title: "Done"
+    });
+}

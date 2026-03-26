@@ -1,46 +1,36 @@
-version: '3.8'
+version: "3.8"
+
 services:
   postgres:
     image: postgres:13
+    container_name: todo_postgres
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: todo_app_dev
+      POSTGRES_DB: todo_db
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
+    container_name: todo_backend
     ports:
-      - '5000:5000'
+      - "5000:5000"
     depends_on:
       - postgres
     environment:
-      - DB_HOST=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=todo_app_dev
-      - JWT_SECRET=your_jwt_secret
-      - NODE_ENV=development
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
+      DATABASE_URL: postgres://user:password@postgres:5432/todo_db
+      JWT_SECRET: your_jwt_secret
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: ./frontend
+    container_name: todo_frontend
     ports:
-      - '3000:3000'
+      - "3000:3000"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/usr/src/app
-      - /usr/src/app/node_modules
 
 volumes:
   postgres_data:
