@@ -44,21 +44,42 @@ const Board = () => {
       return;
     }
 
-    const originalTasks = tasks;
+    const originalTasks = [...tasks];
     
     const movedTask = originalTasks.find(t => t.id === parseInt(draggableId));
-    const updatedTask = { ...movedTask, CategoryId: parseInt(destination.droppableId) };
+    
+    // Optimistically update the state
+    const sourceColumnTasks = Array.from(originalTasks.filter(t => t.CategoryId === parseInt(source.droppableId)));
+    const [removed] = sourceColumnTasks.splice(source.index, 1);
+    
+    let newTasks = [...originalTasks];
 
-    const newTasks = originalTasks.map(t =>
-      t.id === parseInt(draggableId) ? updatedTask : t
-    );
+    if (source.droppableId === destination.droppableId) {
+        sourceColumnTasks.splice(destination.index, 0, removed);
+        const otherTasks = originalTasks.filter(t => t.CategoryId !== parseInt(source.droppableId));
+        newTasks = [...otherTasks, ...sourceColumnTasks.map((t, index) => ({...t, position: index}))];
+    } else {
+        const destinationColumnTasks = Array.from(originalTasks.filter(t => t.CategoryId === parseInt(destination.droppableId)));
+        destinationColumnTasks.splice(destination.index, 0, removed);
+        
+        const otherTasks = originalTasks.filter(t => t.CategoryId !== parseInt(source.droppableId) && t.CategoryId !== parseInt(destination.droppableId));
+        
+        newTasks = [
+            ...otherTasks, 
+            ...sourceColumnTasks.map((t, index) => ({...t, position: index})),
+            ...destinationColumnTasks.map((t, index) => ({...t, CategoryId: parseInt(destination.droppableId), position: index}))
+        ];
+    }
     
     setTasks(newTasks);
 
     try {
       await axios.put(
         `${API_URL}/tasks/${draggableId}`,
-        { CategoryId: parseInt(destination.droppableId) },
+        { 
+            CategoryId: parseInt(destination.droppableId),
+            position: destination.index
+        },
         { withCredentials: true }
       );
     } catch (error) {

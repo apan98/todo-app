@@ -31,7 +31,7 @@ exports.getTasks = async (req, res) => {
 exports.createTask = async (req, res) => {
   try {
     const { title, description, priority, dueDate, CategoryId } = req.body;
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.status(400).json({ error: "Title is required" });
     }
     const maxPosition = await Task.max("position", { where: { CategoryId, UserId: req.user.id }});
@@ -76,11 +76,11 @@ exports.updateTask = async (req, res) => {
       });
 
       if (!task) {
-        throw new Error("Task not found or you do not have permission to edit it");
+        return res.status(404).json({ error: "Task not found or you do not have permission to edit it" });
       }
       
       if (task.version !== version) {
-        throw new Error("Conflict: Task has been updated by another user. Please refresh and try again.");
+        return res.status(409).json({ error: "Conflict: Task has been updated by another user. Please refresh and try again." });
       }
 
       const wantsToMove = (position !== undefined && position !== task.position) || (CategoryId !== undefined && CategoryId !== task.CategoryId);
@@ -200,7 +200,7 @@ exports.deleteTask = async (req, res) => {
       });
 
       if (!task) {
-        throw new Error("Task not found or you do not have permission to delete it");
+        return res.status(404).json({ error: "Task not found or you do not have permission to delete it" });
       }
 
       const { CategoryId, position } = task;
