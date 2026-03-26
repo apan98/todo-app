@@ -74,7 +74,7 @@ exports.update = (req, res) => {
   }
 
   Task.update(req.body, {
-    where: { id: id }
+    where: { id: id, userId: req.userId }
   })
     .then(num => {
       if (num == 1) {
@@ -177,7 +177,7 @@ exports.delete = (req, res) => {
   const id = req.params.id;
 
   Task.destroy({
-    where: { id: id }
+    where: { id: id, userId: req.userId }
   })
     .then(num => {
       if (num == 1) {
