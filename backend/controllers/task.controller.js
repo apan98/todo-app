@@ -161,47 +161,53 @@ exports.update = async (req, res) => {
   }
 };
 
-// Update task position (drag and drop)
-exports.reorder = async (req, res) => {
+// Update task order (drag and drop)
+exports.updateOrder = async (req, res) => {
     const { tasks } = req.body;
 
-    if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+    if (!tasks || !Array.isArray(tasks)) {
         return res.status(400).send({ message: "Invalid request body. 'tasks' array is required." });
     }
 
-    const t = await db.sequelize.transaction();
+    const t = await db.sequelize.transaction({
+        isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE
+    });
 
     try {
-        const taskIds = tasks.map(task => task.id);
+        if (tasks.length > 0) {
+            const taskIds = tasks.map(task => task.id);
 
-        // Lock the tasks to be updated to prevent race conditions
-        const tasksToUpdate = await Task.findAll({
-            where: {
-                id: { [Op.in]: taskIds },
-                userId: req.user.id,
-            },
-            lock: t.LOCK.UPDATE,
-            transaction: t,
-        });
+            // It's important to read the tasks within the serializable transaction
+            // to establish a dependency on their state.
+            const tasksToUpdate = await Task.findAll({
+                where: {
+                    id: { [Op.in]: taskIds },
+                    userId: req.user.id,
+                },
+                transaction: t,
+            });
 
-        if (tasksToUpdate.length !== taskIds.length) {
-            await t.rollback();
-            return res.status(404).send({ message: "One or more tasks not found or you do not have permission to update them." });
+            if (tasksToUpdate.length !== taskIds.length) {
+                await t.rollback();
+                return res.status(404).send({ message: "One or more tasks not found or you do not have permission to update them." });
+            }
+
+            const updates = tasks.map(taskData =>
+                Task.update(
+                    { order: taskData.order, categoryId: taskData.categoryId },
+                    { where: { id: taskData.id, userId: req.user.id }, transaction: t }
+                )
+            );
+            
+            await Promise.all(updates);
         }
-
-        const updates = tasks.map(taskData =>
-            Task.update(
-                { order: taskData.order, categoryId: taskData.categoryId },
-                { where: { id: taskData.id, userId: req.user.id }, transaction: t }
-            )
-        );
-        
-        await Promise.all(updates);
 
         await t.commit();
         res.send({ message: "Tasks reordered successfully." });
     } catch (error) {
-        await t.rollback();
+        if (t && !t.finished) { // Ensure rollback happens on any error
+            await t.rollback();
+        }
         console.error('Error reordering tasks:', error);
         res.status(500).send({ message: error.message || "Error reordering tasks" });
     }

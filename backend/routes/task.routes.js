@@ -15,6 +15,6 @@ module.exports = function(app) {
   app.get("/api/tasks", [authJwt.verifyToken], tasks.findAll);
   app.get("/api/tasks/:id", [authJwt.verifyToken], tasks.findOne);
   app.put("/api/tasks/:id", [authJwt.verifyToken, updateTaskValidation], tasks.update);
-  app.put("/api/tasks/reorder", [authJwt.verifyToken], tasks.reorder);
+  app.put("/api/tasks/order", [authJwt.verifyToken], tasks.updateOrder);
   app.delete("/api/tasks/:id", [authJwt.verifyToken], tasks.delete);
 };
