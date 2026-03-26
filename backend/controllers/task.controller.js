@@ -23,7 +23,7 @@ exports.create = async (req, res) => {
 
   try {
     if (req.body.categoryId) {
-        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId }, transaction: t });
+        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id }, transaction: t });
         if (!category) {
             await t.rollback();
             return res.status(400).send({ message: "Invalid categoryId." });
@@ -31,7 +31,7 @@ exports.create = async (req, res) => {
     }
 
     const maxOrder = await Task.max('order', {
-      where: { categoryId: req.body.categoryId, userId: req.userId },
+      where: { categoryId: req.body.categoryId, userId: req.user.id },
       transaction: t
     });
 
@@ -41,7 +41,7 @@ exports.create = async (req, res) => {
       priority: req.body.priority,
       deadline: req.body.deadline,
       categoryId: req.body.categoryId,
-      userId: req.userId,
+      userId: req.user.id,
       order: (maxOrder === null) ? 0 : maxOrder + 1
     };
   
@@ -76,7 +76,7 @@ const getPagingData = (data, page, limit) => {
 // Retrieve all Tasks from the database with pagination and filtering
 exports.findAll = (req, res) => {
   const { page, size, title, priority } = req.query;
-  let condition = { userId: req.userId };
+  let condition = { userId: req.user.id };
 
   if (title) {
     condition.title = { [Op.iLike]: `%${title}%` };
@@ -109,7 +109,7 @@ exports.findAll = (req, res) => {
 exports.findOne = (req, res) => {
   const id = req.params.id;
 
-  Task.findOne({ where: { id: id, userId: req.userId } })
+  Task.findOne({ where: { id: id, userId: req.user.id } })
     .then(data => {
       if (data) {
         res.send(data);
@@ -133,14 +133,14 @@ exports.update = async (req, res) => {
 
   try {
     if (req.body.categoryId) {
-        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId } });
+        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id } });
         if (!category) {
             return res.status(400).send({ message: "Invalid categoryId." });
         }
     }
 
     const [num] = await Task.update(req.body, {
-      where: { id: id, userId: req.userId }
+      where: { id: id, userId: req.user.id }
     });
 
     if (num == 1) {
@@ -178,7 +178,7 @@ exports.reorder = async (req, res) => {
         const tasksToUpdate = await Task.findAll({
             where: {
                 id: { [Op.in]: taskIds },
-                userId: req.userId,
+                userId: req.user.id,
             },
             lock: t.LOCK.UPDATE,
             transaction: t,
@@ -192,7 +192,7 @@ exports.reorder = async (req, res) => {
         const updates = tasks.map(taskData =>
             Task.update(
                 { order: taskData.order, categoryId: taskData.categoryId },
-                { where: { id: taskData.id, userId: req.userId }, transaction: t }
+                { where: { id: taskData.id, userId: req.user.id }, transaction: t }
             )
         );
         
@@ -213,7 +213,7 @@ exports.delete = async (req, res) => {
 
   try {
     const task = await Task.findOne({
-      where: { id: id, userId: req.userId }
+      where: { id: id, userId: req.user.id }
     });
 
     if (!task) {

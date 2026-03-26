@@ -36,7 +36,8 @@ exports.signin = (req, res) => {
   User.findOne({
     where: {
       username: req.body.username
-    }
+    },
+    attributes: { exclude: ['password'] }
   })
     .then(user => {
       if (!user) {
@@ -59,6 +60,12 @@ exports.signin = (req, res) => {
         expiresIn: '1h'
       });
 
+      const userResponse = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      };
+
       res.cookie("accessToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -66,11 +73,7 @@ exports.signin = (req, res) => {
         maxAge: 3600 * 1000
       });
 
-      res.status(200).send({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-      });
+      res.status(200).send(userResponse);
     })
     .catch(err => {
       res.status(500).send({ message: err.message });

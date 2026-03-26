@@ -36,12 +36,23 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-// Error handling for CSRF
+// Global error handler
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
-    res.status(403).json({ message: 'Invalid CSRF token' });
+    return res.status(403).json({ message: 'Invalid CSRF token' });
+  }
+
+  console.error(err); // Log the error for debugging purposes
+
+  // In production, send a generic message.
+  // In development, send the error message and stack trace.
+  if (process.env.NODE_ENV === 'production') {
+    res.status(500).send({ message: "Internal Server Error" });
   } else {
-    next(err);
+    res.status(500).send({
+      message: err.message,
+      stack: err.stack
+    });
   }
 });
 
