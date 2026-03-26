@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useHistory } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import api from "../services/api";
-import { debounce } from 'lodash';
+import { debounce } from "lodash";
+import { toast } from "react-toastify";
 
 const Board = () => {
   const [data, setData] = useState(null);
+  const [isRequestPending, setIsRequestPending] = useState(false);
   const location = useLocation();
   const history = useHistory();
   const [error, setError] = useState(null);
@@ -23,11 +25,11 @@ const Board = () => {
       const categoriesResult = await api.get(`/categories?${params.toString()}`);
       const categories = {};
       const tasks = {};
-      const categoryOrder = categoriesResult.data.map(c => c.id);
+      const categoryOrder = categoriesResult.data.map((c) => c.id);
 
-      categoriesResult.data.forEach(category => {
-        categories[category.id] = { ...category, taskIds: category.tasks.map(t => t.id) };
-        category.tasks.forEach(task => {
+      categoriesResult.data.forEach((category) => {
+        categories[category.id] = { ...category, taskIds: category.tasks.map((t) => t.id) };
+        category.tasks.forEach((task) => {
           tasks[task.id] = task;
         });
       });
@@ -36,8 +38,8 @@ const Board = () => {
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to fetch data";
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error(errorMessage, err);
-      alert(errorMessage);
     }
   }, [searchQuery, priorityFilter]);
 
@@ -47,8 +49,8 @@ const Board = () => {
 
   const setSearchParams = (newParams) => {
     history.push({
-        pathname: location.pathname,
-        search: newParams.toString()
+      pathname: location.pathname,
+      search: newParams.toString(),
     });
   };
 
@@ -58,20 +60,20 @@ const Board = () => {
     const newQuery = e.target.value;
     const newParams = new URLSearchParams(location.search);
     if (newQuery) {
-        newParams.set("search", newQuery);
+      newParams.set("search", newQuery);
     } else {
-        newParams.delete("search");
+      newParams.delete("search");
     }
     debouncedSetSearchParams(newParams);
   };
-  
+
   const handlePriorityChange = (e) => {
     const newPriority = e.target.value;
     const newParams = new URLSearchParams(location.search);
     if (newPriority) {
-        newParams.set("priority", newPriority);
+      newParams.set("priority", newPriority);
     } else {
-        newParams.delete("priority");
+      newParams.delete("priority");
     }
     setSearchParams(newParams);
   };
@@ -81,23 +83,23 @@ const Board = () => {
       return;
     }
     const originalData = JSON.parse(JSON.stringify(data));
-    
-    // Optimistic UI update
+
     const newData = { ...data };
     delete newData.tasks[taskId];
-    Object.values(newData.categories).forEach(category => {
-      category.taskIds = category.taskIds.filter(id => id !== taskId);
+    Object.values(newData.categories).forEach((category) => {
+      category.taskIds = category.taskIds.filter((id) => id !== taskId);
     });
     setData(newData);
 
     try {
       await api.delete(`/tasks/${taskId}`);
+      toast.success("Task deleted");
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to delete task";
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error(errorMessage, err);
-      alert(errorMessage);
-      setData(originalData); // Revert on failure
+      setData(originalData);
     }
   };
 
@@ -107,45 +109,51 @@ const Board = () => {
       return;
     }
 
+    if (isRequestPending) {
+      toast.warn("Please wait for the previous operation to complete.");
+      return;
+    }
+
     const originalData = JSON.parse(JSON.stringify(data));
     const task = data.tasks[draggableId];
-    
-    // Optimistic UI update
+
     const start = data.categories[source.droppableId];
     const end = data.categories[destination.droppableId];
     const newData = { ...data };
 
     const startTaskIds = Array.from(start.taskIds);
     startTaskIds.splice(source.index, 1);
-    
+
     if (start === end) {
-        startTaskIds.splice(destination.index, 0, parseInt(draggableId));
-        const newCategory = { ...start, taskIds: startTaskIds };
-        newData.categories[newCategory.id] = newCategory;
+      startTaskIds.splice(destination.index, 0, parseInt(draggableId));
+      const newCategory = { ...start, taskIds: startTaskIds };
+      newData.categories[newCategory.id] = newCategory;
     } else {
-        const newStart = { ...start, taskIds: startTaskIds };
-        const endTaskIds = Array.from(end.taskIds);
-        endTaskIds.splice(destination.index, 0, parseInt(draggableId));
-        const newEnd = { ...end, taskIds: endTaskIds };
-        newData.categories[newStart.id] = newStart;
-        newData.categories[newEnd.id] = newEnd;
+      const newStart = { ...start, taskIds: startTaskIds };
+      const endTaskIds = Array.from(end.taskIds);
+      endTaskIds.splice(destination.index, 0, parseInt(draggableId));
+      const newEnd = { ...end, taskIds: endTaskIds };
+      newData.categories[newStart.id] = newStart;
+      newData.categories[newEnd.id] = newEnd;
     }
     setData(newData);
+    setIsRequestPending(true);
 
     try {
       await api.put(`/tasks/${draggableId}/position`, {
         source,
         destination,
-        version: task.version
+        version: task.version,
       });
-      // Optionally refetch to get the new version number
-      // fetchData(); 
+      fetchData(); // Refetch to get the new version number and ensure consistency
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to update task position";
       setError(errorMessage);
+      toast.error(errorMessage);
       console.error(errorMessage, err);
-      alert(errorMessage);
       setData(originalData); // Revert on failure
+    } finally {
+      setIsRequestPending(false);
     }
   };
 
@@ -154,26 +162,26 @@ const Board = () => {
   }
 
   if (error) {
-    return <div style={{ color: 'red' }}>Error: {error}</div>
+    return <div style={{ color: "red" }}>Error: {error}</div>;
   }
 
   return (
     <div>
-        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-            <input
-                type="text"
-                placeholder="Search tasks..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                style={{ padding: '8px', width: '250px' }}
-            />
-            <select onChange={handlePriorityChange} value={priorityFilter} style={{ padding: '8px' }}>
-                <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-            </select>
-        </div>
+      <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+        <input
+          type="text"
+          placeholder="Search tasks..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          style={{ padding: "8px", width: "250px" }}
+        />
+        <select onChange={handlePriorityChange} value={priorityFilter} style={{ padding: "8px" }}>
+          <option value="">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           {data.categoryOrder.map((categoryId) => {
@@ -191,10 +199,10 @@ const Board = () => {
                       padding: 8,
                       width: 300,
                       minHeight: 500,
-                      borderRadius: '4px'
+                      borderRadius: "4px",
                     }}
                   >
-                    <h2 style={{ padding: '0 8px' }}>{category.title}</h2>
+                    <h2 style={{ padding: "0 8px" }}>{category.title}</h2>
                     {tasks.map((task, index) => (
                       <Draggable
                         key={task.id}
@@ -212,17 +220,26 @@ const Board = () => {
                               margin: "0 0 8px 0",
                               minHeight: "50px",
                               backgroundColor: "#fff",
-                              borderRadius: '4px',
-                              boxShadow: '0 1px 0 rgba(9,30,66,.25)',
+                              borderRadius: "4px",
+                              boxShadow: "0 1px 0 rgba(9,30,66,.25)",
                               ...provided.draggableProps.style,
-                              position: 'relative'
+                              position: "relative",
                             }}
                           >
                             {task.title}
-                            <button 
+                            <button
                               onClick={() => deleteTask(task.id)}
-                              style={{ position: 'absolute', top: 5, right: 5, cursor: 'pointer', border: 'none', background: 'transparent', fontSize: '16px', fontWeight: 'bold' }}
-                             >
+                              style={{
+                                position: "absolute",
+                                top: 5,
+                                right: 5,
+                                cursor: "pointer",
+                                border: "none",
+                                background: "transparent",
+                                fontSize: "16px",
+                                fontWeight: "bold",
+                              }}
+                            >
                               &times;
                             </button>
                           </div>
