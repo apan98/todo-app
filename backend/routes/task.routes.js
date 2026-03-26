@@ -1,5 +1,6 @@
 const { authJwt } = require("../middleware");
 const tasks = require("../controllers/task.controller.js");
+const { createTaskValidation, updateTaskValidation } = require("../middleware/taskValidation");
 
 module.exports = function(app) {
   app.use(function(req, res, next) {
@@ -10,10 +11,10 @@ module.exports = function(app) {
     next();
   });
 
-  app.post("/api/tasks", [authJwt.verifyToken], tasks.create);
+  app.post("/api/tasks", [authJwt.verifyToken, createTaskValidation], tasks.create);
   app.get("/api/tasks", [authJwt.verifyToken], tasks.findAll);
   app.get("/api/tasks/:id", [authJwt.verifyToken], tasks.findOne);
-  app.put("/api/tasks/:id", [authJwt.verifyToken], tasks.update);
+  app.put("/api/tasks/:id", [authJwt.verifyToken, updateTaskValidation], tasks.update);
   app.put("/api/tasks/reorder", [authJwt.verifyToken], tasks.reorder);
   app.delete("/api/tasks/:id", [authJwt.verifyToken], tasks.delete);
 };

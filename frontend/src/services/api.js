@@ -9,10 +9,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(config => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  if (user && user.accessToken) {
-    config.headers['x-access-token'] = user.accessToken;
-  }
+  // We are now using httpOnly cookies for the token, so we don't need to set it here.
+  // The browser will automatically send the cookie with each request.
   return config;
 }, error => {
   toast.error("Error sending request.");
@@ -24,7 +22,7 @@ api.interceptors.response.use(response => {
 }, error => {
   if (error.response) {
     if (error.response.status === 401) {
-      localStorage.removeItem('user');
+      // Cookies are managed by the browser, so we just need to redirect
       window.location = '/login';
       toast.error("Session expired. Please log in again.");
     } else {

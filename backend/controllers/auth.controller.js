@@ -8,6 +8,12 @@ var bcrypt = require("bcryptjs");
 exports.signup = (req, res) => {
   const { password, username, email } = req.body;
 
+  if (!password || password.trim() === "") {
+    return res.status(400).send({
+      message: "Password is required and cannot be empty."
+    });
+  }
+
   // Password complexity check
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
   if (!passwordRegex.test(password)) {

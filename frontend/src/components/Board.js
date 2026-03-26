@@ -117,6 +117,7 @@ const Board = () => {
     const originalData = JSON.parse(JSON.stringify(data));
     const task = data.tasks[draggableId];
 
+    // Optimistic UI Update
     const start = data.categories[source.droppableId];
     const end = data.categories[destination.droppableId];
     const newData = { ...data };
@@ -145,13 +146,15 @@ const Board = () => {
         destination,
         version: task.version,
       });
-      fetchData(); // Refetch to get the new version number and ensure consistency
+      // On success, refetch data to ensure consistency with the backend state
+      await fetchData(); 
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to update task position";
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(`Error: ${errorMessage}. Reverting changes.`);
       console.error(errorMessage, err);
-      setData(originalData); // Revert on failure
+      // Revert UI to the original state on failure
+      setData(originalData);
     } finally {
       setIsRequestPending(false);
     }

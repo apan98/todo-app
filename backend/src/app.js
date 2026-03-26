@@ -1,6 +1,7 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
+const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3001;
 const { sequelize } = require("../models");
@@ -12,6 +13,12 @@ if (!process.env.JWT_SECRET) {
 
 const csrfProtection = csrf({ cookie: true });
 
+const corsOptions = {
+  origin: 'http://localhost:3000', // Allow only the frontend to connect
+  credentials: true, // Allow cookies to be sent
+};
+
+app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 
