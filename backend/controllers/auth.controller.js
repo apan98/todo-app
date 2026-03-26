@@ -77,3 +77,8 @@ exports.signin = (req, res) => {
       res.status(500).send({ message: err.message });
     });
 };
+
+exports.logout = (req, res) => {
+  res.clearCookie("accessToken");
+  res.status(200).send({ message: "Logout successful." });
+};

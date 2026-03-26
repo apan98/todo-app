@@ -1,4 +1,4 @@
-import { body, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 
 exports.validateTask = [
   body('title')
