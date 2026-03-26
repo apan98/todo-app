@@ -37,7 +37,7 @@ exports.delete = (req, res) => {
         });
       } else {
         Category.destroy({
-          where: { id: id }
+          where: { id: id, userId: req.userId }
         })
           .then(num => {
             if (num == 1) {

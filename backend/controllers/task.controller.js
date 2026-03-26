@@ -20,7 +20,7 @@ exports.create = async (req, res) => {
   
   try {
     if (req.body.categoryId) {
-        const category = await Category.findByPk(req.body.categoryId);
+        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId } });
         if (!category) {
             return res.status(400).send({ message: "Invalid categoryId." });
         }
@@ -118,7 +118,7 @@ exports.update = async (req, res) => {
 
   try {
     if (req.body.categoryId) {
-        const category = await Category.findByPk(req.body.categoryId);
+        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId } });
         if (!category) {
             return res.status(400).send({ message: "Invalid categoryId." });
         }
