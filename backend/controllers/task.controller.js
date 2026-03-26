@@ -2,6 +2,7 @@ const db = require("../models");
 const Task = db.tasks;
 const Category = db.categories;
 const Op = db.Sequelize.Op;
+const sequelize = db.sequelize;
 
 const validatePriority = (priority) => {
     const validPriorities = ['low', 'medium', 'high'];
@@ -18,13 +19,21 @@ exports.create = async (req, res) => {
     return res.status(400).send({ message: "Invalid priority value." });
   }
   
+  const t = await sequelize.transaction();
+
   try {
     if (req.body.categoryId) {
-        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId } });
+        const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.userId }, transaction: t });
         if (!category) {
+            await t.rollback();
             return res.status(400).send({ message: "Invalid categoryId." });
         }
     }
+
+    const maxOrder = await Task.max('order', {
+      where: { categoryId: req.body.categoryId, userId: req.userId },
+      transaction: t
+    });
 
     const task = {
       title: req.body.title,
@@ -32,12 +41,15 @@ exports.create = async (req, res) => {
       priority: req.body.priority,
       deadline: req.body.deadline,
       categoryId: req.body.categoryId,
-      userId: req.userId
+      userId: req.userId,
+      order: (maxOrder === null) ? 0 : maxOrder + 1
     };
   
-    const data = await Task.create(task);
+    const data = await Task.create(task, { transaction: t });
+    await t.commit();
     res.status(201).send(data);
   } catch (err) {
+    await t.rollback();
     if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
       return res.status(400).send({ message: err.message });
     }
@@ -79,7 +91,7 @@ exports.findAll = (req, res) => {
 
   const { limit, offset } = getPagination(page, size);
 
-  Task.findAndCountAll({ where: condition, limit, offset, order: [['position', 'ASC']] })
+  Task.findAndCountAll({ where: condition, limit, offset, order: [['order', 'ASC']] })
     .then(data => {
       const response = getPagingData(data, page, limit);
       res.send(response);
@@ -158,7 +170,7 @@ exports.reorder = async (req, res) => {
     try {
         const updates = tasks.map(taskData => 
             Task.update(
-                { position: taskData.position, categoryId: taskData.categoryId },
+                { order: taskData.order, categoryId: taskData.categoryId },
                 { where: { id: taskData.id, userId: req.userId }, transaction: t }
             )
         );

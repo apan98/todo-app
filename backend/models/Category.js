@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
   }
   Category.init({
     name: DataTypes.STRING,
-    position: DataTypes.INTEGER,
+    order: DataTypes.INTEGER,
     userId: {
       type: DataTypes.UUID,
       allowNull: false,

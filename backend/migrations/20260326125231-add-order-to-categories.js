@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Categories', 'position', {
+    await queryInterface.addColumn('Categories', 'order', {
       type: Sequelize.INTEGER
     });
 
@@ -13,18 +13,18 @@ module.exports = {
 
     for (let i = 0; i < categories.length; i++) {
       await queryInterface.sequelize.query(
-        `UPDATE "Categories" SET position = ${i} WHERE id = ${categories[i].id};`
+        `UPDATE "Categories" SET "order" = ${i} WHERE id = ${categories[i].id};`
       );
     }
 
     // Now, make the column NOT NULL
-    await queryInterface.changeColumn('Categories', 'position', {
+    await queryInterface.changeColumn('Categories', 'order', {
         type: Sequelize.INTEGER,
         allowNull: false,
     });
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('Categories', 'position');
+    await queryInterface.removeColumn('Categories', 'order');
   }
 };

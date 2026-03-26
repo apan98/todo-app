@@ -2,7 +2,7 @@ import React from 'react';
 import { Draggable } from 'react-beautiful-dnd';
 
 const Task = ({ task, index }) => {
-  const isOverdue = task.deadline && new Date(task.deadline).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+  const isOverdue = task.deadline && new Date(task.deadline).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0) && task.categoryName !== 'Done';
 
   return (
     <Draggable draggableId={String(task.id)} index={index}>

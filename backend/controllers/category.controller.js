@@ -11,12 +11,20 @@ exports.findAll = (req, res) => {
       required: false
     }],
     order: [
-      ['position', 'ASC'],
-      [{ model: Task, as: 'tasks' }, 'position', 'ASC']
+      ['order', 'ASC'],
+      [{ model: Task, as: 'tasks' }, 'order', 'ASC']
     ]
   })
     .then(data => {
-      res.send(data);
+      const dataWithCategoryNames = data.map(category => {
+        const plainCategory = category.get({ plain: true });
+        plainCategory.tasks = plainCategory.tasks.map(task => ({
+          ...task,
+          categoryName: plainCategory.name
+        }));
+        return plainCategory;
+      });
+      res.send(dataWithCategoryNames);
     })
     .catch(err => {
       res.status(500).send({

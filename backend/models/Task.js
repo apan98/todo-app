@@ -5,8 +5,8 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Task extends Model {
     static associate(models) {
-      Task.belongsTo(models.User, { foreignKey: 'UserId', onDelete: 'CASCADE' });
-      Task.belongsTo(models.Category, { foreignKey: 'CategoryId' });
+      Task.belongsTo(models.User, { foreignKey: 'userId', onDelete: 'CASCADE' });
+      Task.belongsTo(models.Category, { foreignKey: 'categoryId' });
     }
   }
   Task.init({
@@ -28,10 +28,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM('low', 'medium', 'high'),
         defaultValue: 'medium'
     },
-    dueDate: DataTypes.DATE,
-    position: DataTypes.INTEGER,
-    UserId: DataTypes.INTEGER,
-    CategoryId: DataTypes.INTEGER,
+    deadline: DataTypes.DATE,
+    order: DataTypes.INTEGER,
+    userId: DataTypes.INTEGER,
+    categoryId: DataTypes.INTEGER,
     version: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -40,6 +40,12 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'Task',
+    indexes: [
+      {
+        unique: true,
+        fields: ['userId', 'categoryId', 'order']
+      }
+    ]
   });
   return Task;
 };
