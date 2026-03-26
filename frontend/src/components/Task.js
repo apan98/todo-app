@@ -6,17 +6,15 @@ const Task = ({ task, index }) => {
     if (!task.deadline || task.categoryName === 'Done') {
       return false;
     }
-    // The deadline from the server is a UTC timestamp, e.g., "2023-10-27T00:00:00.000Z"
-    // We need to compare dates only, ignoring time and timezones.
-    const deadlineDate = new Date(task.deadline);
-    // Extracts the date part in UTC
-    const deadlineDay = new Date(Date.UTC(deadlineDate.getUTCFullYear(), deadlineDate.getUTCMonth(), deadlineDate.getUTCDate()));
-
+    // Get today's date at midnight in the local timezone
     const today = new Date();
-    // Extracts today's date part in UTC
-    const todayDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    today.setHours(0, 0, 0, 0);
 
-    return deadlineDay < todayDay;
+    // The deadline from the server is a string like "2023-10-27".
+    // new Date("2023-10-27") will create a date at midnight in the local timezone.
+    const deadlineDate = new Date(task.deadline);
+
+    return deadlineDate < today;
   })();
 
   const getDeadlineString = (deadline) => {
