@@ -1,6 +1,6 @@
 'use strict';
 const {
-  Model
+  Model, UUIDV4
 } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
@@ -16,6 +16,11 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   User.init({
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: UUIDV4,
+      primaryKey: true
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,

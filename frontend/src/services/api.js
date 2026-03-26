@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
@@ -14,15 +15,24 @@ api.interceptors.request.use(config => {
   }
   return config;
 }, error => {
+  toast.error("Error sending request.");
   return Promise.reject(error);
 });
 
 api.interceptors.response.use(response => {
   return response;
 }, error => {
-  if (error.response.status === 401) {
-    localStorage.removeItem('user');
-    window.location = '/login';
+  if (error.response) {
+    if (error.response.status === 401) {
+      localStorage.removeItem('user');
+      window.location = '/login';
+      toast.error("Session expired. Please log in again.");
+    } else {
+      const message = error.response.data.message || "An error occurred.";
+      toast.error(message);
+    }
+  } else {
+    toast.error("Network error. Please try again later.");
   }
   return Promise.reject(error);
 });

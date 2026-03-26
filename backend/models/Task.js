@@ -10,8 +10,18 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Task.init({
-    title: DataTypes.STRING,
-    description: DataTypes.TEXT,
+    title: {
+        type: DataTypes.STRING,
+        validate: {
+            len: [1, 255]
+        }
+    },
+    description: {
+        type: DataTypes.TEXT,
+        validate: {
+            len: [0, 5000]
+        }
+    },
     priority: {
         type: DataTypes.ENUM('low', 'medium', 'high'),
         defaultValue: 'medium'

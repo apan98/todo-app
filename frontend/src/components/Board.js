@@ -1,18 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import api from "../services/api";
+import { debounce } from 'lodash';
 
 const Board = () => {
   const [data, setData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await api.get("/categories");
+  const fetchData = async (query = "") => {
+    try {
+      const result = await api.get(`/tasks?search=${query}`);
+      // This is a simplified logic. A full implementation would likely
+      // need to fetch categories separately and then merge tasks into them.
+      // For now, we'll just re-fetch everything.
+      const categoriesResult = await api.get("/categories");
       const categories = {};
       const tasks = {};
-      const categoryOrder = result.data.map(c => c.id);
+      const categoryOrder = categoriesResult.data.map(c => c.id);
 
-      result.data.forEach(category => {
+      categoriesResult.data.forEach(category => {
         categories[category.id] = { ...category, taskIds: category.tasks.map(t => t.id) };
         category.tasks.forEach(task => {
           tasks[task.id] = task;
@@ -20,9 +26,24 @@ const Board = () => {
       });
 
       setData({ tasks, categories, categoryOrder });
-    };
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    }
+  };
+
+  const debouncedFetchData = useCallback(debounce(fetchData, 300), []);
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    debouncedFetchData(searchQuery);
+  }, [searchQuery, debouncedFetchData]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
   const deleteTask = async (taskId) => {
     if (!window.confirm("Are you sure you want to delete this task?")) {
@@ -114,66 +135,75 @@ const Board = () => {
   }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {data.categoryOrder.map((categoryId) => {
-          const category = data.categories[categoryId];
-          const tasks = category.taskIds.map((taskId) => data.tasks[taskId]).filter(Boolean);
+    <div>
+      <input
+        type="text"
+        placeholder="Search tasks..."
+        value={searchQuery}
+        onChange={handleSearchChange}
+        style={{ marginBottom: '10px', padding: '5px', width: '200px' }}
+      />
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          {data.categoryOrder.map((categoryId) => {
+            const category = data.categories[categoryId];
+            const tasks = category.taskIds.map((taskId) => data.tasks[taskId]).filter(Boolean);
 
-          return (
-            <Droppable droppableId={categoryId.toString()} key={categoryId}>
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  style={{
-                    background: "lightgrey",
-                    padding: 4,
-                    width: 250,
-                    minHeight: 500,
-                  }}
-                >
-                  <h2>{category.title}</h2>
-                  {tasks.map((task, index) => (
-                    <Draggable
-                      key={task.id}
-                      draggableId={task.id.toString()}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            userSelect: "none",
-                            padding: 16,
-                            margin: "0 0 8px 0",
-                            minHeight: "50px",
-                            backgroundColor: "#fff",
-                            ...provided.draggableProps.style,
-                            position: 'relative'
-                          }}
-                        >
-                          {task.title}
-                          <button 
-                            onClick={() => deleteTask(task.id)}
-                            style={{ position: 'absolute', top: 5, right: 5, cursor: 'pointer', border: 'none', background: 'transparent' }}
-                           >
-                            &times;
-                          </button>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          );
-        })}
-      </div>
-    </DragDropContext>
+            return (
+              <Droppable droppableId={categoryId.toString()} key={categoryId}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    style={{
+                      background: "lightgrey",
+                      padding: 4,
+                      width: 250,
+                      minHeight: 500,
+                    }}
+                  >
+                    <h2>{category.title}</h2>
+                    {tasks.map((task, index) => (
+                      <Draggable
+                        key={task.id}
+                        draggableId={task.id.toString()}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={{
+                              userSelect: "none",
+                              padding: 16,
+                              margin: "0 0 8px 0",
+                              minHeight: "50px",
+                              backgroundColor: "#fff",
+                              ...provided.draggableProps.style,
+                              position: 'relative'
+                            }}
+                          >
+                            {task.title}
+                            <button 
+                              onClick={() => deleteTask(task.id)}
+                              style={{ position: 'absolute', top: 5, right: 5, cursor: 'pointer', border: 'none', background: 'transparent' }}
+                             >
+                              &times;
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            );
+          })}
+        </div>
+      </DragDropContext>
+    </div>
   );
 };
 
