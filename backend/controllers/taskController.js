@@ -27,7 +27,8 @@ exports.getTasks = async (req, res) => {
     });
     res.json({ tasks: rows, total: count, pages: Math.ceil(count / limit) });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Get Tasks Error:', error);
+    res.status(500).json({ error: 'An unexpected error occurred on the server.' });
   }
 };
 
@@ -49,7 +50,14 @@ exports.createTask = async (req, res) => {
     });
     res.status(201).json(task);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: error.message, details: error.errors });
+    }
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({ error: 'Invalid CategoryId. The specified category does not exist.' });
+    }
+    console.error('Create Task Error:', error);
+    res.status(500).json({ error: 'An unexpected error occurred on the server.' });
   }
 };
 
@@ -140,8 +148,13 @@ exports.updateTask = async (req, res) => {
         res.status(409).json({ error: error.message });
     } else if (error.message.startsWith("Task not found")) {
         res.status(404).json({ error: error.message });
+    } else if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: error.message, details: error.errors });
+    } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({ error: 'Invalid CategoryId. The specified category does not exist.' });
     } else {
-        res.status(400).json({ error: error.message });
+        console.error('Update Task Error:', error);
+        res.status(500).json({ error: 'An unexpected error occurred on the server.' });
     }
   }
 };
@@ -231,7 +244,8 @@ exports.reorderTasks = async (req, res) => {
 
         res.status(200).json({ message: "Tasks reordered successfully" });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.error('Reorder Tasks Error:', error);
+        res.status(500).json({ error: 'An unexpected error occurred on the server.' });
     }
 };
 
@@ -247,6 +261,7 @@ exports.deleteTask = async (req, res) => {
     await task.destroy();
     res.status(204).send();
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Delete Task Error:', error);
+    res.status(500).json({ error: 'An unexpected error occurred on the server.' });
   }
 };
