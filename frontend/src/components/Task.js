@@ -8,12 +8,8 @@ const Task = ({ task, index }) => {
     }
     // Get today's date at midnight in the local timezone
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // The deadline from the server is a string like "2023-10-27".
-    // new Date("2023-10-27") will create a date at midnight in the local timezone.
+    today.setHours(23, 59, 59, 999);
     const deadlineDate = new Date(task.deadline);
-
     return deadlineDate < today;
   })();
 

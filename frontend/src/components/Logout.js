@@ -1,16 +1,14 @@
 import React from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
-const API_URL = 'http://localhost:5000/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const Logout = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
-      // No need to remove token from localStorage as we are using httpOnly cookies
+      await logout();
       navigate('/login');
     } catch (error) {
       console.error('Logout failed', error);

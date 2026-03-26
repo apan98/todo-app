@@ -64,7 +64,7 @@ const Board = () => {
     } else {
       newParams.delete("search");
     }
-    debouncedSetSearchParams(newParams);
+    setSearchParams(newParams);
   };
 
   const handlePriorityChange = (e) => {
@@ -102,57 +102,79 @@ const Board = () => {
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
-    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
+    if (!destination) {
       return;
     }
-  
-    if (isRequestPending) {
-      toast.warn("Please wait for the previous operation to complete.");
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
       return;
     }
-  
-    const originalData = JSON.parse(JSON.stringify(data)); // Deep copy
-    const task = data.tasks[draggableId];
-  
-    // Optimistic UI Update
+
     const start = data.categories[source.droppableId];
-    const end = data.categories[destination.droppableId];
-    const newData = { ...data };
-  
+    const finish = data.categories[destination.droppableId];
+
+    if (start === finish) {
+      const newTaskIds = Array.from(start.taskIds);
+      newTaskIds.splice(source.index, 1);
+      newTaskIds.splice(destination.index, 0, draggableId);
+
+      const newColumn = {
+        ...start,
+        taskIds: newTaskIds,
+      };
+
+      const newState = {
+        ...data,
+        categories: {
+          ...data.categories,
+          [newColumn.id]: newColumn,
+        },
+      };
+
+      setData(newState);
+      try {
+        await api.put(`/tasks/order`, {
+            tasks: newTaskIds.map((id, index) => ({ id, order: index, categoryId: newColumn.id }))
+        });
+      } catch (error) {
+        setData(data);
+      }
+      return;
+    }
+
     const startTaskIds = Array.from(start.taskIds);
     startTaskIds.splice(source.index, 1);
-  
-    if (start === end) {
-      startTaskIds.splice(destination.index, 0, parseInt(draggableId));
-      const newCategory = { ...start, taskIds: startTaskIds };
-      newData.categories[newCategory.id] = newCategory;
-    } else {
-      const newStart = { ...start, taskIds: startTaskIds };
-      const endTaskIds = Array.from(end.taskIds);
-      endTaskIds.splice(destination.index, 0, parseInt(draggableId));
-      const newEnd = { ...end, taskIds: endTaskIds };
-      newData.categories[newStart.id] = newStart;
-      newData.categories[newEnd.id] = newEnd;
-    }
-    setData(newData);
-    setIsRequestPending(true);
-  
+    const newStart = {
+      ...start,
+      taskIds: startTaskIds,
+    };
+
+    const finishTaskIds = Array.from(finish.taskIds);
+    finishTaskIds.splice(destination.index, 0, draggableId);
+    const newFinish = {
+      ...finish,
+      taskIds: finishTaskIds,
+    };
+
+    const newState = {
+      ...data,
+      categories: {
+        ...data.categories,
+        [newStart.id]: newStart,
+        [newFinish.id]: newFinish,
+      },
+    };
+    setData(newState);
     try {
-      await api.put(`/tasks/${draggableId}/move`, {
-        newCategoryId: destination.droppableId,
-        newOrder: destination.index,
-      });
-      await fetchData(); // Refetch to ensure consistency
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || "Failed to update task position";
-      setError(errorMessage);
-      toast.error(`Error: ${errorMessage}. Reverting changes.`);
-      console.error(errorMessage, err);
-      // Revert UI to the original state on failure
-      setData(originalData);
-    } finally {
-      setIsRequestPending(false);
-    }
+        await api.put(`/tasks/order`, {
+            tasks: finishTaskIds.map((id, index) => ({ id, order: index, categoryId: newFinish.id }))
+        });
+      } catch (error) {
+        setData(data);
+      }
   };
 
   if (!data) {

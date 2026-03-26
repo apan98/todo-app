@@ -132,6 +132,11 @@ exports.update = async (req, res) => {
   }
 
   try {
+    const task = await Task.findOne({ where: { id: id, userId: req.user.id } });
+    if (!task) {
+      return res.status(404).send({ message: `Cannot find Task with id=${id}.` });
+    }
+
     if (req.body.categoryId) {
         const category = await Category.findOne({ where: { id: req.body.categoryId, userId: req.user.id } });
         if (!category) {
