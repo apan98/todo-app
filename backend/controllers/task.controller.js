@@ -50,6 +50,7 @@ exports.create = async (req, res) => {
     res.status(201).send(data);
   } catch (err) {
     await t.rollback();
+    console.error('Error in create task:', err);
     if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
       return res.status(400).send({ message: err.message });
     }
@@ -97,6 +98,7 @@ exports.findAll = (req, res) => {
       res.send(response);
     })
     .catch(err => {
+      console.error('Error in findAll tasks:', err);
       res.status(500).send({
         message: err.message || "Some error occurred while retrieving tasks."
       });
@@ -116,6 +118,7 @@ exports.findOne = (req, res) => {
       }
     })
     .catch(err => {
+      console.error(`Error retrieving Task with id=${id}:`, err);
       res.status(500).send({ message: "Error retrieving Task with id=" + id });
     });
 };
@@ -148,6 +151,7 @@ exports.update = async (req, res) => {
       });
     }
   } catch (err) {
+    console.error(`Error updating Task with id=${id}:`, err);
     if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
       return res.status(400).send({ message: err.message });
     }
@@ -198,6 +202,7 @@ exports.reorder = async (req, res) => {
         res.send({ message: "Tasks reordered successfully." });
     } catch (error) {
         await t.rollback();
+        console.error('Error reordering tasks:', error);
         res.status(500).send({ message: error.message || "Error reordering tasks" });
     }
 };
@@ -221,6 +226,7 @@ exports.delete = async (req, res) => {
     res.send({ message: "Task was deleted successfully!" });
 
   } catch (err) {
+    console.error(`Could not delete Task with id=${id}:`, err);
     res.status(500).send({ message: "Could not delete Task with id=" + id });
   }
 };

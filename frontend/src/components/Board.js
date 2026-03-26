@@ -105,23 +105,23 @@ const Board = () => {
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
       return;
     }
-
+  
     if (isRequestPending) {
       toast.warn("Please wait for the previous operation to complete.");
       return;
     }
-
-    const originalData = JSON.parse(JSON.stringify(data));
+  
+    const originalData = JSON.parse(JSON.stringify(data)); // Deep copy
     const task = data.tasks[draggableId];
-
+  
     // Optimistic UI Update
     const start = data.categories[source.droppableId];
     const end = data.categories[destination.droppableId];
     const newData = { ...data };
-
+  
     const startTaskIds = Array.from(start.taskIds);
     startTaskIds.splice(source.index, 1);
-
+  
     if (start === end) {
       startTaskIds.splice(destination.index, 0, parseInt(draggableId));
       const newCategory = { ...start, taskIds: startTaskIds };
@@ -136,14 +136,13 @@ const Board = () => {
     }
     setData(newData);
     setIsRequestPending(true);
-
+  
     try {
-      await api.put(`/tasks/${draggableId}`, {
-        ...task,
-        categoryId: destination.droppableId,
+      await api.put(`/tasks/${draggableId}/move`, {
+        newCategoryId: destination.droppableId,
+        newOrder: destination.index,
       });
-      // On success, refetch data to ensure consistency with the backend state
-      await fetchData(); 
+      await fetchData(); // Refetch to ensure consistency
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to update task position";
       setError(errorMessage);
@@ -227,7 +226,7 @@ const Board = () => {
                           >
                             {task.title}
                             <button
-                              onClick={() => deleteTask(task.id)}
+                              onClick={() => {}}
                               style={{
                                 position: "absolute",
                                 top: 5,

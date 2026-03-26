@@ -2,6 +2,7 @@ const db = require("../models");
 const config = require("../config/auth.config");
 const User = db.user;
 const { body, validationResult } = require('express-validator');
+const BlacklistedToken = require('../models/BlacklistedToken');
 
 var jwt = require("jsonwebtoken");
 var bcrypt = require("bcryptjs");
@@ -55,14 +56,14 @@ exports.signin = (req, res) => {
       }
 
       var token = jwt.sign({ id: user.id }, config.secret, {
-        expiresIn: 86400 // 24 hours
+        expiresIn: '1h'
       });
 
       res.cookie("accessToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 86400 * 1000
+        maxAge: 3600 * 1000
       });
 
       res.status(200).send({
@@ -76,7 +77,16 @@ exports.signin = (req, res) => {
     });
 };
 
-exports.logout = (req, res) => {
+exports.logout = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, config.secret);
+      await BlacklistedToken.create({ token, expiryDate: new Date(decoded.exp * 1000) });
+    } catch (err) {
+      // Ignore errors if token is invalid
+    }
+  }
   res.clearCookie("accessToken");
   res.status(200).send({ message: "Logout successful." });
 };
