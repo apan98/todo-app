@@ -36,7 +36,7 @@ exports.signup = [
         if (err.name === 'SequelizeUniqueConstraintError') {
           return res.status(409).send({ message: "Failed! Email is already in use!" });
         }
-        res.status(500).send({ message: err.message });
+        res.status(500).send({ message: "An internal server error occurred." });
       });
   }
 ];
@@ -85,7 +85,7 @@ exports.signin = (req, res) => {
       res.status(200).send(userResponse);
     })
     .catch(err => {
-      res.status(500).send({ message: err.message });
+      res.status(500).send({ message: "An internal server error occurred." });
     });
 };
 

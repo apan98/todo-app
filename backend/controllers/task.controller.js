@@ -62,7 +62,7 @@ exports.create = [
         return res.status(400).send({ message: err.message });
       }
       res.status(500).send({
-        message: err.message || "Some error occurred while creating the Task."
+        message: "Some error occurred while creating the Task."
       });
     }
   }
@@ -108,7 +108,7 @@ exports.findAll = (req, res) => {
     .catch(err => {
       console.error('Error in findAll tasks:', err);
       res.status(500).send({
-        message: err.message || "Some error occurred while retrieving tasks."
+        message: "Some error occurred while retrieving tasks."
       });
     });
 };
@@ -266,7 +266,7 @@ exports.updateOrder = async (req, res) => {
             await t.rollback();
         }
         console.error('Error reordering tasks:', error);
-        res.status(500).send({ message: error.message || "Error reordering tasks" });
+        res.status(500).send({ message: "Error reordering tasks" });
     }
 };
 
