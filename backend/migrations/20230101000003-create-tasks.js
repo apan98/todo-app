@@ -1,7 +1,6 @@
 'use strict';
-/** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  up: async (queryInterface, Sequelize) => {
     await queryInterface.createTable('Tasks', {
       id: {
         allowNull: false,
@@ -20,8 +19,13 @@ module.exports = {
         type: Sequelize.ENUM('low', 'medium', 'high'),
         defaultValue: 'medium'
       },
-      deadline: {
+      dueDate: {
         type: Sequelize.DATE
+      },
+      position: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
       },
       userId: {
         type: Sequelize.INTEGER,
@@ -30,7 +34,7 @@ module.exports = {
           key: 'id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onDelete: 'CASCADE'
       },
       categoryId: {
         type: Sequelize.INTEGER,
@@ -39,7 +43,7 @@ module.exports = {
           key: 'id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onDelete: 'CASCADE'
       },
       createdAt: {
         allowNull: false,
@@ -51,7 +55,7 @@ module.exports = {
       }
     });
   },
-  async down(queryInterface, Sequelize) {
+  down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable('Tasks');
   }
 };

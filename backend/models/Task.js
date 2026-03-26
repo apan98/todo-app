@@ -1,53 +1,28 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
-
-const Task = sequelize.define(
-  "Task",
-  {
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: {
-          msg: "Title cannot be empty",
-        },
-      },
-    },
-    description: {
-      type: DataTypes.TEXT,
-    },
-    priority: {
-      type: DataTypes.ENUM("low", "medium", "high"),
-      defaultValue: "medium",
-    },
-    dueDate: {
-      type: DataTypes.DATE,
-    },
-    position: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-    },
-    order: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    version: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0
+'use strict';
+const {
+  Model
+} = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+  class Task extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      Task.belongsTo(models.User, { foreignKey: 'userId' });
+      Task.belongsTo(models.Category, { foreignKey: 'categoryId' });
     }
-  },
-  {
-    indexes: [
-      {
-        unique: true,
-        fields: ["UserId", "CategoryId", "position"],
-        name: "user_category_position_unique_idx",
-      },
-    ],
   }
-);
-
-module.exports = Task;
-
+  Task.init({
+    title: DataTypes.STRING,
+    description: DataTypes.TEXT,
+    priority: DataTypes.ENUM('low', 'medium', 'high'),
+    dueDate: DataTypes.DATE,
+    position: DataTypes.INTEGER
+  }, {
+    sequelize,
+    modelName: 'Task',
+  });
+  return Task;
+};
