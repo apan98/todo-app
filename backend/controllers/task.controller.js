@@ -161,14 +161,31 @@ exports.update = async (req, res) => {
 exports.reorder = async (req, res) => {
     const { tasks } = req.body;
 
-    if (!tasks || !Array.isArray(tasks)) {
+    if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
         return res.status(400).send({ message: "Invalid request body. 'tasks' array is required." });
     }
 
     const t = await db.sequelize.transaction();
 
     try {
-        const updates = tasks.map(taskData => 
+        const taskIds = tasks.map(task => task.id);
+
+        // Lock the tasks to be updated to prevent race conditions
+        const tasksToUpdate = await Task.findAll({
+            where: {
+                id: { [Op.in]: taskIds },
+                userId: req.userId,
+            },
+            lock: t.LOCK.UPDATE,
+            transaction: t,
+        });
+
+        if (tasksToUpdate.length !== taskIds.length) {
+            await t.rollback();
+            return res.status(404).send({ message: "One or more tasks not found or you do not have permission to update them." });
+        }
+
+        const updates = tasks.map(taskData =>
             Task.update(
                 { order: taskData.order, categoryId: taskData.categoryId },
                 { where: { id: taskData.id, userId: req.userId }, transaction: t }

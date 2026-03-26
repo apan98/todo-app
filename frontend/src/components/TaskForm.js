@@ -5,11 +5,11 @@ const TaskForm = ({ task, isEditing, onTaskUpdated, onTaskCreated }) => {
   const [title, setTitle] = useState(task ? task.title : '');
   const [description, setDescription] = useState(task ? task.description : '');
   const [priority, setPriority] = useState(task ? task.priority : 'low');
-  const [dueDate, setDueDate] = useState(task && task.dueDate ? task.dueDate.split('T')[0] : '');
+  const [deadline, setDeadline] = useState(task && task.deadline ? task.deadline.split('T')[0] : '');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const taskData = { title, description, priority, dueDate: dueDate || null };
+    const taskData = { title, description, priority, deadline: deadline || null };
 
     try {
       if (isEditing) {
@@ -45,8 +45,8 @@ const TaskForm = ({ task, isEditing, onTaskUpdated, onTaskCreated }) => {
       </select>
       <input
         type="date"
-        value={dueDate}
-        onChange={(e) => setDueDate(e.target.value)}
+        value={deadline}
+        onChange={(e) => setDeadline(e.target.value)}
       />
       <button type="submit">{isEditing ? 'Update Task' : 'Create Task'}</button>
     </form>
