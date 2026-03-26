@@ -78,28 +78,25 @@ const Board = () => {
     setSearchParams(newParams);
   };
 
-  const deleteTask = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) {
-      return;
-    }
-    const originalData = JSON.parse(JSON.stringify(data));
-
-    const newData = { ...data };
-    delete newData.tasks[taskId];
-    Object.values(newData.categories).forEach((category) => {
-      category.taskIds = category.taskIds.filter((id) => id !== taskId);
-    });
-    setData(newData);
-
+  const handleAddTask = async (newTask) => {
     try {
-      await api.delete(`/tasks/${taskId}`);
-      toast.success("Task deleted");
+      const response = await api.post('/tasks', newTask);
+      const createdTask = response.data;
+
+      // Reset filters to ensure the new task is visible
+      history.push({
+        pathname: location.pathname,
+        search: '',
+      });
+
+      // Refetch data to show all tasks, including the new one
+      fetchData();
+
+      toast.success('Task created successfully!');
     } catch (err) {
-      const errorMessage = err.response?.data?.message || "Failed to delete task";
-      setError(errorMessage);
+      const errorMessage = err.response?.data?.message || 'Failed to create task';
       toast.error(errorMessage);
       console.error(errorMessage, err);
-      setData(originalData);
     }
   };
 
@@ -141,10 +138,9 @@ const Board = () => {
     setIsRequestPending(true);
 
     try {
-      await api.put(`/tasks/${draggableId}/position`, {
-        source,
-        destination,
-        version: task.version,
+      await api.put(`/tasks/${draggableId}`, {
+        ...task,
+        categoryId: destination.droppableId,
       });
       // On success, refetch data to ensure consistency with the backend state
       await fetchData(); 
