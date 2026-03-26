@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useHistory } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import api from "../services/api";
 import { debounce } from 'lodash';
 
 const Board = () => {
   const [data, setData] = useState(null);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const history = useHistory();
   const [error, setError] = useState(null);
 
+  const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get("search") || "";
   const priorityFilter = searchParams.get("priority") || "";
 
@@ -43,11 +45,18 @@ const Board = () => {
     fetchData();
   }, [fetchData]);
 
-  const debouncedSetSearchParams = useCallback(debounce(setSearchParams, 300), [setSearchParams]);
+  const setSearchParams = (newParams) => {
+    history.push({
+        pathname: location.pathname,
+        search: newParams.toString()
+    });
+  };
+
+  const debouncedSetSearchParams = useCallback(debounce(setSearchParams, 300), []);
 
   const handleSearchChange = (e) => {
     const newQuery = e.target.value;
-    const newParams = new URLSearchParams(searchParams);
+    const newParams = new URLSearchParams(location.search);
     if (newQuery) {
         newParams.set("search", newQuery);
     } else {
@@ -58,7 +67,7 @@ const Board = () => {
   
   const handlePriorityChange = (e) => {
     const newPriority = e.target.value;
-    const newParams = new URLSearchParams(searchParams);
+    const newParams = new URLSearchParams(location.search);
     if (newPriority) {
         newParams.set("priority", newPriority);
     } else {
@@ -135,6 +144,7 @@ const Board = () => {
       const errorMessage = err.response?.data?.message || "Failed to update task position";
       setError(errorMessage);
       console.error(errorMessage, err);
+      alert(errorMessage);
       setData(originalData); // Revert on failure
     }
   };
