@@ -147,71 +147,42 @@ exports.update = async (req, res) => {
 
 // Update task position (drag and drop)
 exports.reorder = async (req, res) => {
-    const { draggableId, source, destination, version } = req.body;
+    const { tasks } = req.body;
 
-    if (!draggableId || !source || !destination) {
-        return res.status(400).send({ message: "Invalid request body." });
+    if (!tasks || !Array.isArray(tasks)) {
+        return res.status(400).send({ message: "Invalid request body. 'tasks' array is required." });
     }
-    
-    const taskId = draggableId;
 
-    if (version === undefined) {
-        return res.status(400).send({ message: "Task version is required for update." });
-    }
+    const t = await db.sequelize.transaction();
 
     try {
-        await db.sequelize.transaction(async (t) => {
-            const task = await Task.findByPk(taskId, { transaction: t });
+        for (const taskData of tasks) {
+            const task = await Task.findOne({
+                where: {
+                    id: taskData.id,
+                    userId: req.userId
+                },
+                transaction: t
+            });
 
             if (!task) {
-                throw new Error("Task not found");
+                throw new Error(`Task with id=${taskData.id} not found or you don't have permission to access it.`);
             }
 
-            if (task.userId !== req.userId) {
-                throw new Error("Unauthorized");
-            }
-            
-            if (task.version !== version) {
-                throw new Error("Conflict: Task has been modified by another user. Please refresh.");
-            }
-
-            const sourceCategoryId = parseInt(source.droppableId, 10);
-            const destCategoryId = parseInt(destination.droppableId, 10);
-            const sourceIndex = source.index;
-            const destIndex = destination.index;
-
-            // Remove task from old position
-            await Task.increment(
-                { position: -1 },
-                { where: { categoryId: sourceCategoryId, position: { [Op.gt]: sourceIndex } }, transaction: t }
-            );
-
-            // Add task to new position
-            await Task.increment(
-                { position: 1 },
-                { where: { categoryId: destCategoryId, position: { [Op.gte]: destIndex } }, transaction: t }
-            );
-
-            // Update the task itself
             await task.update({
-                categoryId: destCategoryId,
-                position: destIndex,
-                version: task.version + 1
+                position: taskData.position,
+                categoryId: taskData.categoryId
             }, { transaction: t });
-        });
-
-        res.send({ message: "Task position updated successfully." });
-    } catch (error) {
-        if (error.message.startsWith("Conflict")) {
-            return res.status(409).send({ message: error.message });
         }
-        if (error.message === "Task not found") {
+
+        await t.commit();
+        res.send({ message: "Tasks reordered successfully." });
+    } catch (error) {
+        await t.rollback();
+        if (error.message.includes("not found")) {
             return res.status(404).send({ message: error.message });
         }
-        if (error.message === "Unauthorized") {
-            return res.status(403).send({ message: "You are not authorized to modify this task." });
-        }
-        res.status(500).send({ message: error.message || "Error updating task position" });
+        res.status(500).send({ message: error.message || "Error reordering tasks" });
     }
 };
 

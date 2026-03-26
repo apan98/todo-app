@@ -12,7 +12,9 @@ module.exports = (sequelize, DataTypes) => {
   Task.init({
     title: {
         type: DataTypes.STRING,
+        allowNull: false,
         validate: {
+            notEmpty: true,
             len: [1, 255]
         }
     },
