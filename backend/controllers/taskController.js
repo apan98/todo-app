@@ -3,7 +3,7 @@ const { Op } = require("sequelize");
 
 exports.getTasks = async (req, res) => {
   try {
-    const { priority, search } = req.query;
+    const { priority, search, page = 1, limit = 10 } = req.query;
     const whereClause = { UserId: req.user.id };
 
     if (priority && priority !== "all") {
@@ -14,14 +14,23 @@ exports.getTasks = async (req, res) => {
       whereClause.title = { [Op.iLike]: `%${search}%` };
     }
 
-    const tasks = await Task.findAll({
+    const offset = (page - 1) * limit;
+
+    const { count, rows: tasks } = await Task.findAndCountAll({
       where: whereClause,
       order: [
         ["CategoryId", "ASC"],
         ["position", "ASC"],
       ],
+      limit: parseInt(limit, 10),
+      offset: parseInt(offset, 10),
     });
-    res.json({ tasks });
+
+    res.json({
+      tasks,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page, 10),
+    });
   } catch (error) {
     console.error('Get Tasks Error:', error);
     res.status(500).json({ error: 'An unexpected error occurred on the server.' });
@@ -167,8 +176,8 @@ exports.updateTasksOrder = async (req, res) => {
 
     try {
         await sequelize.transaction(async (t) => {
-            for (const task of tasks) {
-                await Task.update(
+            const promises = tasks.map(task => 
+                Task.update(
                     { 
                         position: task.position,
                         CategoryId: task.CategoryId,
@@ -178,8 +187,9 @@ exports.updateTasksOrder = async (req, res) => {
                         where: { id: task.id, UserId: userId },
                         transaction: t 
                     }
-                );
-            }
+                )
+            );
+            await Promise.all(promises);
         });
         res.status(200).json({ message: "Tasks order updated successfully" });
     } catch (error) {

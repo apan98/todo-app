@@ -5,8 +5,8 @@ const {
 module.exports = (sequelize, DataTypes) => {
   class Task extends Model {
     static associate(models) {
-      Task.belongsTo(models.User, { foreignKey: 'UserId' }); // Corrected foreignKey
-      Task.belongsTo(models.Category, { foreignKey: 'CategoryId' }); // Corrected foreignKey
+      Task.belongsTo(models.User, { foreignKey: 'UserId', onDelete: 'CASCADE' });
+      Task.belongsTo(models.Category, { foreignKey: 'CategoryId' });
     }
   }
   Task.init({
@@ -18,8 +18,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     dueDate: DataTypes.DATE,
     position: DataTypes.INTEGER,
-    UserId: DataTypes.INTEGER, // Explicitly define foreign key
-    CategoryId: DataTypes.INTEGER, // Explicitly define foreign key
+    UserId: DataTypes.INTEGER,
+    CategoryId: DataTypes.INTEGER,
     version: {
         type: DataTypes.INTEGER,
         allowNull: false,
