@@ -16,6 +16,7 @@ app.get("/", (req, res) => {
 // routes
 require('./routes/auth.routes')(app);
 require('./routes/task.routes')(app);
+require('./routes/category.routes')(app);
 
 // set port, listen for requests
 const PORT = process.env.PORT || 5000;
