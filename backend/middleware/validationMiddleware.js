@@ -1,7 +1,7 @@
 const { body, validationResult } = require("express-validator");
 
 const validateTask = [
-  body("title").notEmpty().withMessage("Title is required"),
+  body("title").trim().isLength({ min: 1 }).withMessage("Title is required"),
   body("priority")
     .optional()
     .isIn(["low", "medium", "high"])
