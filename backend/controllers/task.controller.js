@@ -138,7 +138,9 @@ exports.update = [
       throw new Error("Invalid priority value.");
     }
 
-    const t = await sequelize.transaction();
+    const t = await sequelize.transaction({
+        isolationLevel: db.Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE
+    });
 
     try {
       const task = await Task.findOne({ where: { id: id, userId: req.user.id }, transaction: t });
@@ -148,14 +150,23 @@ exports.update = [
         throw new Error(`Cannot find Task with id=${id}.`);
       }
 
-      const oldCategoryId = task.categoryId;
       const newCategoryId = req.body.categoryId;
+
+      if (newCategoryId !== undefined && newCategoryId !== task.categoryId) {
+        const category = await Category.findOne({ where: { id: newCategoryId, userId: req.user.id }, transaction: t });
+        if (!category) {
+          await t.rollback();
+          return res.status(403).send({ message: "Forbidden: You don't have access to this category." });
+        }
+      }
+
+      const oldCategoryId = task.categoryId;
       const newPosition = req.body.order;
 
-      if (newCategoryId !== undefined && newPosition !== undefined) {
+      if (newCategoryId !== undefined && newPosition !== undefined && (newCategoryId !== oldCategoryId || newPosition !== task.order)) {
         // Logic for drag-and-drop reordering
         
-        // 1. Decrement order for tasks in the old category
+        // 1. Decrement order for tasks in the old category after the old position
         await Task.update(
           { order: sequelize.literal('"order" - 1') },
           { 
@@ -168,7 +179,7 @@ exports.update = [
           }
         );
 
-        // 2. Increment order for tasks in the new category
+        // 2. Increment order for tasks in the new category at and after the new position
         await Task.update(
           { order: sequelize.literal('"order" + 1') },
           { 
@@ -192,12 +203,12 @@ exports.update = [
         await t.commit();
         res.send({ message: "Task was updated successfully." });
       } else {
-        await t.rollback();
-        res.status(404);
-        throw new Error(`Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`);
+        await t.commit();
+        res.send({ message: "Task update resulted in no changes." });
       }
     } catch (err) {
       await t.rollback();
+      console.error("Error updating task:", err); // Log the actual error
       res.status(500);
       throw new Error("Error updating Task with id=" + id);
     }
@@ -262,15 +273,44 @@ exports.updateOrder = asyncHandler(async (req, res) => {
 exports.delete = asyncHandler(async (req, res) => {
   const id = req.params.id;
 
-  const task = await Task.findOne({
-    where: { id: id, userId: req.user.id }
-  });
+  const t = await sequelize.transaction();
 
-  if (!task) {
-    res.status(404);
-    throw new Error(`Cannot delete Task with id=${id}. Maybe Task was not found!`);
+  try {
+    const task = await Task.findOne({
+      where: { id: id, userId: req.user.id },
+      transaction: t
+    });
+
+    if (!task) {
+      await t.rollback();
+      res.status(404);
+      throw new Error(`Cannot delete Task with id=${id}. Maybe Task was not found!`);
+    }
+
+    const categoryId = task.categoryId;
+    const order = task.order;
+
+    await task.destroy({ transaction: t });
+
+    // After deleting, decrement the order of subsequent tasks in the same category
+    await Task.update(
+      { order: sequelize.literal('"order" - 1') },
+      {
+        where: {
+          categoryId: categoryId,
+          userId: req.user.id,
+          order: { [Op.gt]: order }
+        },
+        transaction: t
+      }
+    );
+
+    await t.commit();
+    res.send({ message: "Task was deleted successfully!" });
+  } catch (err) {
+      await t.rollback();
+      console.error("Error deleting task:", err);
+      res.status(500);
+      throw new Error("Error deleting Task with id=" + id);
   }
-
-  await task.destroy();
-  res.send({ message: "Task was deleted successfully!" });
 });
