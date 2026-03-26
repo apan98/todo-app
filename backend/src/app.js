@@ -5,6 +5,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 const { sequelize } = require("../models");
 const csrfProtection = require('../middleware/csrfMiddleware');
+const { errorHandler } = require("../middleware/errorHandler");
 
 if (!process.env.JWT_SECRET) {
   console.error("FATAL ERROR: JWT_SECRET is not defined.");
@@ -30,6 +31,8 @@ app.use("/api/auth", require("../routes/auth.routes"));
 // Apply CSRF protection to all state-changing routes
 app.use("/api/tasks", csrfProtection, require("../routes/task.routes"));
 app.use("/api/categories", csrfProtection, require("../routes/category.routes"));
+
+app.use(errorHandler);
 
 
 app.get("/", (req, res) => {

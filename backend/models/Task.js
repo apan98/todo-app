@@ -41,6 +41,8 @@ Task.init(
         model: "user",
         key: "id",
       },
+      onDelete: "CASCADE",
+      onDelete: "CASCADE",
     },
   },
   {

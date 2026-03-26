@@ -1,3 +1,4 @@
+const asyncHandler = require("express-async-handler");
 const db = require("../models");
 const Task = db.tasks;
 const Category = db.categories;
@@ -16,7 +17,7 @@ const sanitizeHtml = require('sanitize-html');
 exports.create = [
   body('title').trim().notEmpty().withMessage('Title can not be empty!').customSanitizer(value => sanitizeHtml(value)),
   body('description').trim().customSanitizer(value => sanitizeHtml(value)),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -65,7 +66,7 @@ exports.create = [
         message: "Some error occurred while creating the Task."
       });
     }
-  }
+  })
 ];
 
 const getPagination = (page, size) => {
@@ -82,7 +83,7 @@ const getPagingData = (data, page, limit) => {
 };
 
 // Retrieve all Tasks from the database with pagination and filtering
-exports.findAll = (req, res) => {
+exports.findAll = asyncHandler(async (req, res) => {
   const { page, size, title, priority } = req.query;
   let condition = { userId: req.user.id };
 
@@ -94,57 +95,47 @@ exports.findAll = (req, res) => {
     if (['low', 'medium', 'high'].includes(priority)) {
       condition.priority = priority;
     } else {
-      return res.status(400).send({ message: "Invalid priority value for filtering." });
+      res.status(400);
+      throw new Error("Invalid priority value for filtering.");
     }
   }
 
   const { limit, offset } = getPagination(page, size);
 
-  Task.findAndCountAll({ where: condition, limit, offset, order: [['order', 'ASC']] })
-    .then(data => {
-      const response = getPagingData(data, page, limit);
-      res.send(response);
-    })
-    .catch(err => {
-      console.error('Error in findAll tasks:', err);
-      res.status(500).send({
-        message: "Some error occurred while retrieving tasks."
-      });
-    });
-};
+  const data = await Task.findAndCountAll({ where: condition, limit, offset, order: [['order', 'ASC']] });
+  const response = getPagingData(data, page, limit);
+  res.send(response);
+});
 
 // Find a single Task with an id
-exports.findOne = (req, res) => {
+exports.findOne = asyncHandler(async (req, res) => {
   const id = req.params.id;
 
-  Task.findOne({ where: { id: id, userId: req.user.id } })
-    .then(data => {
-      if (data) {
-        res.send(data);
-      } else {
-        res.status(404).send({ message: `Cannot find Task with id=${id}.` });
-      }
-    })
-    .catch(err => {
-      console.error(`Error retrieving Task with id=${id}:`, err);
-      res.status(500).send({ message: "Error retrieving Task with id=" + id });
-    });
-};
+  const data = await Task.findOne({ where: { id: id, userId: req.user.id } });
+  if (data) {
+    res.send(data);
+  } else {
+    res.status(404);
+    throw new Error(`Cannot find Task with id=${id}.`);
+  }
+});
 
 // Update a Task by the id in the request
 exports.update = [
   body('title').optional().trim().customSanitizer(value => sanitizeHtml(value)),
   body('description').optional().trim().customSanitizer(value => sanitizeHtml(value)),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      res.status(400);
+      throw new Error(errors.array());
     }
     
     const id = req.params.id;
 
     if (req.body.priority && !validatePriority(req.body.priority)) {
-      return res.status(400).send({ message: "Invalid priority value." });
+      res.status(400);
+      throw new Error("Invalid priority value.");
     }
 
     const t = await sequelize.transaction();
@@ -153,7 +144,8 @@ exports.update = [
       const task = await Task.findOne({ where: { id: id, userId: req.user.id }, transaction: t });
       if (!task) {
         await t.rollback();
-        return res.status(404).send({ message: `Cannot find Task with id=${id}.` });
+        res.status(404);
+        throw new Error(`Cannot find Task with id=${id}.`);
       }
 
       const oldCategoryId = task.categoryId;
@@ -201,29 +193,24 @@ exports.update = [
         res.send({ message: "Task was updated successfully." });
       } else {
         await t.rollback();
-        res.status(404).send({
-          message: `Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`
-        });
+        res.status(404);
+        throw new Error(`Cannot update Task with id=${id}. Maybe Task was not found or req.body is empty!`);
       }
     } catch (err) {
       await t.rollback();
-      console.error(`Error updating Task with id=${id}:`, err);
-      if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeDatabaseError') {
-        return res.status(400).send({ message: err.message });
-      }
-      res.status(500).send({
-        message: "Error updating Task with id=" + id
-      });
+      res.status(500);
+      throw new Error("Error updating Task with id=" + id);
     }
-  }
+  })
 ];
 
 // Update task order (drag and drop)
-exports.updateOrder = async (req, res) => {
+exports.updateOrder = asyncHandler(async (req, res) => {
     const { tasks } = req.body;
 
     if (!tasks || !Array.isArray(tasks)) {
-        return res.status(400).send({ message: "Invalid request body. 'tasks' array is required." });
+        res.status(400);
+        throw new Error("Invalid request body. 'tasks' array is required.");
     }
 
     const t = await db.sequelize.transaction({
@@ -246,7 +233,8 @@ exports.updateOrder = async (req, res) => {
 
             if (tasksToUpdate.length !== taskIds.length) {
                 await t.rollback();
-                return res.status(404).send({ message: "One or more tasks not found or you do not have permission to update them." });
+                res.status(404);
+                throw new Error("One or more tasks not found or you do not have permission to update them.");
             }
 
             const updates = tasks.map(taskData =>
@@ -265,31 +253,24 @@ exports.updateOrder = async (req, res) => {
         if (t && !t.finished) { // Ensure rollback happens on any error
             await t.rollback();
         }
-        console.error('Error reordering tasks:', error);
-        res.status(500).send({ message: "Error reordering tasks" });
+        res.status(500);
+        throw new Error("Error reordering tasks");
     }
-};
+});
 
 // Delete a Task with the specified id in the request
-exports.delete = async (req, res) => {
+exports.delete = asyncHandler(async (req, res) => {
   const id = req.params.id;
 
-  try {
-    const task = await Task.findOne({
-      where: { id: id, userId: req.user.id }
-    });
+  const task = await Task.findOne({
+    where: { id: id, userId: req.user.id }
+  });
 
-    if (!task) {
-      return res.status(404).send({
-        message: `Cannot delete Task with id=${id}. Maybe Task was not found!`
-      });
-    }
-
-    await task.destroy();
-    res.send({ message: "Task was deleted successfully!" });
-
-  } catch (err) {
-    console.error(`Could not delete Task with id=${id}:`, err);
-    res.status(500).send({ message: "Could not delete Task with id=" + id });
+  if (!task) {
+    res.status(404);
+    throw new Error(`Cannot delete Task with id=${id}. Maybe Task was not found!`);
   }
-};
+
+  await task.destroy();
+  res.send({ message: "Task was deleted successfully!" });
+});
