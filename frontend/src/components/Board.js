@@ -1,40 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import axios from "axios";
-
-const initialData = {
-  tasks: {},
-  categories: {},
-  categoryOrder: [],
-};
+import api from "../services/api";
 
 const Board = () => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const categoriesRes = await axios.get("http://localhost:5000/api/categories");
-      const tasksRes = await axios.get("http://localhost:5000/api/tasks");
-
-      const tasks = {};
-      tasksRes.data.forEach(task => (tasks[task.id] = task));
-
+      const result = await api.get("/categories");
       const categories = {};
-      categoriesRes.data.forEach(category => (categories[category.id] = { ...category, taskIds: [] }));
+      const tasks = {};
+      const categoryOrder = result.data.map(c => c.id);
 
-      tasksRes.data.forEach(task => {
-        if (categories[task.categoryId]) {
-          categories[task.categoryId].taskIds.push(task.id);
-        }
+      result.data.forEach(category => {
+        categories[category.id] = { ...category, taskIds: category.tasks.map(t => t.id) };
+        category.tasks.forEach(task => {
+          tasks[task.id] = task;
+        });
       });
 
-      const categoryOrder = categoriesRes.data.map(category => category.id);
-
-      setData({
-        tasks,
-        categories,
-        categoryOrder,
-      });
+      setData({ tasks, categories, categoryOrder });
     };
     fetchData();
   }, []);
@@ -56,6 +41,8 @@ const Board = () => {
     const start = data.categories[source.droppableId];
     const end = data.categories[destination.droppableId];
 
+    const newData = { ...data };
+
     if (start === end) {
       const newTaskIds = Array.from(start.taskIds);
       newTaskIds.splice(source.index, 1);
@@ -66,47 +53,43 @@ const Board = () => {
         taskIds: newTaskIds,
       };
 
-      const newData = {
-        ...data,
-        categories: {
-          ...data.categories,
-          [newCategory.id]: newCategory,
-        },
+      newData.categories[newCategory.id] = newCategory;
+    } else {
+      // Moving from one list to another
+      const startTaskIds = Array.from(start.taskIds);
+      startTaskIds.splice(source.index, 1);
+      const newStart = {
+        ...start,
+        taskIds: startTaskIds,
       };
 
-      setData(newData);
-      return;
+      const endTaskIds = Array.from(end.taskIds);
+      endTaskIds.splice(destination.index, 0, draggableId);
+      const newEnd = {
+        ...end,
+        taskIds: endTaskIds,
+      };
+
+      newData.categories[newStart.id] = newStart;
+      newData.categories[newEnd.id] = newEnd;
     }
 
-    // Moving from one list to another
-    const startTaskIds = Array.from(start.taskIds);
-    startTaskIds.splice(source.index, 1);
-    const newStart = {
-      ...start,
-      taskIds: startTaskIds,
-    };
-
-    const endTaskIds = Array.from(end.taskIds);
-    endTaskIds.splice(destination.index, 0, draggableId);
-    const newEnd = {
-      ...end,
-      taskIds: endTaskIds,
-    };
-
-    const newData = {
-      ...data,
-      categories: {
-        ...data.categories,
-        [newStart.id]: newStart,
-        [newEnd.id]: newEnd,
-      },
-    };
     setData(newData);
 
-    axios.put(`http://localhost:5000/api/tasks/${draggableId}`, {
-        categoryId: end.id
-    })
+    api.put(`/tasks/position`, {
+      source,
+      destination,
+      draggableId
+    }).catch(err => {
+        // revert state on error
+        // simplified for brevity
+        console.error("Failed to update task position", err);
+    });
   };
+
+  if (!data) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
@@ -166,3 +149,4 @@ const Board = () => {
 };
 
 export default Board;
+

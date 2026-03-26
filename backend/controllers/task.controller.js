@@ -88,6 +88,85 @@ exports.update = (req, res) => {
     });
 };
 
+exports.updatePosition = async (req, res) => {
+  const { source, destination, draggableId } = req.body;
+  const taskId = draggableId;
+
+  try {
+    await db.sequelize.transaction(async (t) => {
+      const task = await Task.findByPk(taskId, { transaction: t });
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      const sourceCategoryId = source.droppableId;
+      const destCategoryId = destination.droppableId;
+      const sourceIndex = source.index;
+      const destIndex = destination.index;
+
+      // Moving within the same category
+      if (sourceCategoryId === destCategoryId) {
+        const tasksToUpdate = await Task.findAll({
+          where: {
+            categoryId: sourceCategoryId,
+            id: { [Op.ne]: taskId }
+          },
+          order: [['position', 'ASC']],
+          transaction: t
+        });
+
+        const tasks = tasksToUpdate;
+        tasks.splice(sourceIndex, 0, task);
+        
+        const [removed] = tasks.splice(sourceIndex, 1);
+        tasks.splice(destIndex, 0, removed);
+
+
+        for (let i = 0; i < tasks.length; i++) {
+          await Task.update({ position: i }, { where: { id: tasks[i].id }, transaction: t });
+        }
+
+      } else { // Moving to a different category
+        // Remove from source category and update positions
+        const sourceTasks = await Task.findAll({
+          where: {
+            categoryId: sourceCategoryId,
+          },
+          order: [['position', 'ASC']],
+          transaction: t
+        });
+
+        sourceTasks.splice(sourceIndex, 1);
+
+        for (let i = 0; i < sourceTasks.length; i++) {
+          await Task.update({ position: i }, { where: { id: sourceTasks[i].id }, transaction: t });
+        }
+
+        // Add to destination category and update positions
+        const destTasks = await Task.findAll({
+          where: {
+            categoryId: destCategoryId,
+          },
+          order: [['position', 'ASC']],
+          transaction: t
+        });
+
+        destTasks.splice(destIndex, 0, task);
+
+        for (let i = 0; i < destTasks.length; i++) {
+          await Task.update({ categoryId: destCategoryId, position: i }, { where: { id: destTasks[i].id }, transaction: t });
+        }
+        await task.update({ categoryId: destCategoryId, position: destIndex }, { transaction: t });
+      }
+    });
+
+    res.send({ message: "Task position updated successfully." });
+  } catch (error) {
+    res.status(500).send({ message: error.message || "Error updating task position" });
+  }
+};
+
+
 exports.delete = (req, res) => {
   const id = req.params.id;
 
