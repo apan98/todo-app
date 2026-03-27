@@ -1,0 +1,42 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "deepmerge": "^4.3.1",
+    "dom-serializer": "^2.0.0",
+    "domelementtype": "^2.3.0",
+    "domhandler": "^5.0.3",
+    "domutils": "^3.2.2",
+    "dotenv": "^17.3.1",
+    "entities": "^7.0.1",
+    "escape-string-regexp": "^4.0.0",
+    "express": "^5.2.1",
+    "express-async-handler": "^1.2.0",
+    "express-validator": "^7.3.1",
+    "htmlparser2": "^10.1.0",
+    "is-plain-object": "^5.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "nanoid": "^3.3.11",
+    "parse-srcset": "^1.0.2",
+    "pg": "^8.20.0",
+    "picocolors": "^1.1.1",
+    "postcss": "^8.5.8",
+    "sanitize-html": "^2.17.2",
+    "sequelize": "^6.37.8",
+    "source-map-js": "^1.2.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "sequelize-cli": "^6.6.5"
+  }
+}
