@@ -7,7 +7,7 @@ const db = require('./src/models');
 app.use(cors());
 app.use(express.json());
 
-const routes = require('./routes');
+const routes = require('./src/routes');
 app.use('/api', routes);
 
 app.listen(port, () => {
