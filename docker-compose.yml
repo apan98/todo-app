@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d todo_db"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
@@ -30,7 +30,7 @@ services:
       - DB_HOST=postgres
       - PORT=3001
     command: >
-      sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && node index.js"
+      sh -c "sleep 5 && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && node index.js"
 
 
   frontend:
