@@ -9,8 +9,11 @@ RUN npm install
 
 COPY backend/ .
 
-RUN chmod +x ./entrypoint.sh
+# Make the entrypoint script executable
+RUN chmod +x /usr/src/app/entrypoint.sh
 
-ENTRYPOINT ["./entrypoint.sh"]
+# Set the entrypoint
+ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
 
+# The default command to run
 CMD [ "npm", "start" ]
