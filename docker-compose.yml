@@ -13,13 +13,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d todo_app_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
     container_name: todo-app-backend
     restart: always
+    command: sh -c "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && node server.js"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/todo_app_dev
       - JWT_SECRET=your_jwt_secret
