@@ -1,0 +1,30 @@
+.kanban-board {
+  display: flex;
+  justify-content: space-around;
+}
+
+.category {
+  width: 30%;
+  background-color: #f4f4f4;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.task {
+  background-color: #fff;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.task.low {
+  border-left: 5px solid green;
+}
+
+.task.medium {
+  border-left: 5px solid orange;
+}
+
+.task.high {
+  border-left: 5px solid red;
+}

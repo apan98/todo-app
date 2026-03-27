@@ -1,34 +1,36 @@
+import React, { useContext } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import Login from './components/Login';
+import Register from './components/Register';
+import KanbanBoard from './components/KanbanBoard';
 
-import React from 'react';
-import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Board from './pages/Board';
-import AuthProvider, { AuthContext } from './context/AuthContext';
-
-const PrivateRoute = ({ component: Component, ...rest }) => {
-  const { token } = React.useContext(AuthContext);
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        token ? <Component {...props} /> : <Redirect to="/login" />
-      }
-    />
-  );
+const PrivateRoute = ({ children }) => {
+  const { token, loading } = useContext(AuthContext);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  return token ? children : <Navigate to="/login" />;
 };
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Switch>
-          <Route path="/login" component={Login} />
-          <Route path="/register" component={Register} />
-          <PrivateRoute path="/" component={Board} />
-        </Switch>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <KanbanBoard />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -16,13 +16,25 @@ module.exports = {
         type: Sequelize.TEXT
       },
       priority: {
-        type: Sequelize.STRING
+        type: Sequelize.ENUM('low', 'medium', 'high')
       },
-      categoryId: {
-        type: Sequelize.INTEGER
+      UserId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Users',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
-      userId: {
-        type: Sequelize.INTEGER
+      CategoryId: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: 'Categories',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
       createdAt: {
         allowNull: false,

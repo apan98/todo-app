@@ -1,36 +1,44 @@
-
 version: '3.8'
+
 services:
   db:
     image: postgres:13
+    container_name: todo-app-db
+    restart: always
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: todo_app
-    ports:
-      - '5432:5432'
+      POSTGRES_DB: todo_app_dev
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   backend:
     build: ./backend
-    ports:
-      - '3001:3001'
-    environment:
-      DB_USER: user
-      DB_PASSWORD: password
-      DB_NAME: todo_app
-      DB_HOST: db
-      JWT_SECRET: your_jwt_secret
+    container_name: todo-app-backend
+    restart: always
     depends_on:
       - db
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/todo_app_dev
+      - JWT_SECRET=your_jwt_secret
+      - PORT=5000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
 
   frontend:
     build: ./frontend
+    container_name: todo-app-frontend
+    restart: always
     ports:
-      - '3000:3000'
-    depends_on:
-      - backend
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 volumes:
-  pgdata:
+  postgres_data:

@@ -2,7 +2,7 @@
   "development": {
     "username": "user",
     "password": "password",
-    "database": "todo_app",
+    "database": "todo_app_dev",
     "host": "db",
     "dialect": "postgres"
   },
@@ -16,7 +16,7 @@
   "production": {
     "username": "user",
     "password": "password",
-    "database": "todo_app",
+    "database": "todo_app_prod",
     "host": "db",
     "dialect": "postgres"
   }
