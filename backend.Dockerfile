@@ -9,4 +9,8 @@ RUN npm install
 
 COPY backend/ .
 
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
+
 CMD [ "npm", "start" ]
