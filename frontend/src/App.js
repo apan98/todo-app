@@ -1,72 +1,75 @@
+
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'http://localhost:5000/api/tasks';
+
+const priorityColors = {
+  low: 'green',
+  medium: 'orange',
+  high: 'red',
+};
 
 function App() {
-  const [columns, setColumns] = useState({});
-  const [search, setSearch] = useState('');
-  const [priority, setPriority] = useState('');
+  const [columns, setColumns] = useState({
+    '1': { id: '1', title: 'Сделать', tasks: [] },
+    '2': { id: '2', title: 'В процессе', tasks: [] },
+    '3': { id: '3', title: 'Готово', tasks: [] },
+  });
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchData();
-  }, [search, priority]);
+    fetchTasks();
+  }, [priorityFilter, searchQuery]);
 
-  const fetchData = async () => {
+  const fetchTasks = async () => {
     try {
-      const response = await axios.get(`${API_URL}/categories`);
-      const newColumns = {};
-      response.data.forEach(category => {
-        newColumns[category.id] = {
-          name: category.name,
-          items: category.tasks,
-        };
+      const response = await axios.get(API_URL, {
+        params: { priority: priorityFilter, search: searchQuery },
+      });
+      const tasks = response.data;
+      const newColumns = {
+        '1': { id: '1', title: 'Сделать', tasks: [] },
+        '2': { id: '2', title: 'В процессе', tasks: [] },
+        '3': { id: '3', title: 'Готово', tasks: [] },
+      };
+      tasks.forEach(task => {
+        if (newColumns[task.categoryId]) {
+          newColumns[task.categoryId].tasks.push(task);
+        }
       });
       setColumns(newColumns);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching tasks:', error);
     }
   };
 
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-    const { source, destination } = result;
+  const onDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
 
     if (source.droppableId !== destination.droppableId) {
       const sourceColumn = columns[source.droppableId];
       const destColumn = columns[destination.droppableId];
-      const sourceItems = [...sourceColumn.items];
-      const destItems = [...destColumn.items];
-      const [removed] = sourceItems.splice(source.index, 1);
-      destItems.splice(destination.index, 0, removed);
-      
-      axios.put(`${API_URL}/tasks/${removed.id}`, { categoryId: destination.droppableId });
+      const sourceTasks = [...sourceColumn.tasks];
+      const destTasks = [...destColumn.tasks];
+      const [removed] = sourceTasks.splice(source.index, 1);
+      destTasks.splice(destination.index, 0, removed);
 
       setColumns({
         ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: sourceItems,
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: destItems,
-        },
+        [source.droppableId]: { ...sourceColumn, tasks: sourceTasks },
+        [destination.droppableId]: { ...destColumn, tasks: destTasks },
       });
-    } else {
-      const column = columns[source.droppableId];
-      const copiedItems = [...column.items];
-      const [removed] = copiedItems.splice(source.index, 1);
-      copiedItems.splice(destination.index, 0, removed);
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...column,
-          items: copiedItems,
-        },
-      });
+
+      try {
+        await axios.put(`${API_URL}/${draggableId}`, { categoryId: destination.droppableId });
+      } catch (error) {
+        console.error('Error updating task category:', error);
+      }
     }
   };
 
@@ -77,10 +80,10 @@ function App() {
         <input
           type="text"
           placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
           <option value="">All Priorities</option>
           <option value="low">Low</option>
           <option value="medium">Medium</option>
@@ -88,31 +91,31 @@ function App() {
         </select>
       </div>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="container">
-          {Object.entries(columns).map(([columnId, column]) => (
-            <Droppable droppableId={columnId} key={columnId}>
+        <div className="kanban-board">
+          {Object.values(columns).map(column => (
+            <Droppable key={column.id} droppableId={column.id}>
               {(provided) => (
                 <div
-                  className="column"
                   ref={provided.innerRef}
                   {...provided.droppableProps}
+                  className="column"
                 >
-                  <h2>{column.name}</h2>
-                  {column.items.map((item, index) => (
-                    <Draggable
-                      key={item.id}
-                      draggableId={item.id.toString()}
-                      index={index}
-                    >
+                  <h2>{column.title}</h2>
+                  {column.tasks.map((task, index) => (
+                    <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
                       {(provided) => (
                         <div
-                          className={`item ${item.priority}`}
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
+                          className="task"
+                          style={{
+                            ...provided.draggableProps.style,
+                            borderLeft: `5px solid ${priorityColors[task.priority]}`,
+                          }}
                         >
-                          <h4>{item.title}</h4>
-                          <p>{item.description}</p>
+                          <h4>{task.title}</h4>
+                          <p>{task.description}</p>
                         </div>
                       )}
                     </Draggable>

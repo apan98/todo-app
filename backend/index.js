@@ -1,20 +1,17 @@
+
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
+const taskRoutes = require('./routes/tasks');
+
 const app = express();
-const port = process.env.PORT || 3001;
-const db = require('./src/models');
-const routes = require('./src/routes');
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
+app.use('/api/tasks', taskRoutes);
 
-app.use('/api', routes);
-
-app.listen(port, () => {
-  console.log(`Backend server is running on http://localhost:${port}`);
-});
-
-db.sequelize.sync().then(() => {
-    console.log("Database synced");
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
