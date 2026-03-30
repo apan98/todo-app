@@ -1,157 +1,112 @@
-# Todo App - Kanban Board
+# Todo App with Kanban Board
 
-Простой и удобный Todo list с Kanban-доской для управления задачами. Приложение работает полностью в браузере без авторизации и использует localStorage для сохранения состояния.
+Full-stack todo application with drag-and-drop Kanban board functionality.
 
-## 🚀 Возможности
+## Tech Stack
 
-- ✅ **Добавление задач** — создавайте задачи с простым текстом
-- 🎯 **Kanban-доска** — три колонки: "К выполнению", "В работе", "Выполнено"
-- 🖱️ **Drag & Drop** — перетаскивайте задачи между колонками одним движением
-- 💾 **Сохранение в localStorage** — задачи сохраняются автоматически и восстанавливаются после перезагрузки
-- 🗑️ **Удаление задач** — удаляйте ненужные задачи в один клик
-- 📱 **Адаптивный дизайн** — работает на десктопах и мобильных устройствах
-- 🎨 **Красивый интерфейс** — современные градиенты и анимации
+- **Frontend**: React 18 + TypeScript, Vite, Material UI (Dark Theme)
+- **Drag & Drop**: @hello-pangea/dnd
+- **Backend**: Node.js + Express
+- **Database**: PostgreSQL
+- **Containerization**: Docker & Docker Compose
 
-## 📦 Структура проекта
+## Features
 
-```
-todo-app/
-├── index.html      # Главная HTML-страница
-├── style.css       # Стили приложения
-├── app.js          # Логика приложения
-├── .gitignore      # Игнорируемые файлы
-└── README.md       # Документация
-```
+- 📋 Create, edit, and delete tasks
+- 🚀 Drag and drop tasks between columns (Todo, In Progress, Done)
+- 🎨 Material UI dark theme with responsive design
+- 🏷️ Task priority levels (Low, Medium, High)
+- 🌈 Customizable task colors
+- 📱 Cross-platform support
+- 🔄 Real-time task management
 
-## 🧩 Архитектура
+## Quick Start
 
-Приложение построено на модульной архитектуре с тремя основными компонентами:
-
-### StorageManager
-- Управляет localStorage
-- Сохраняет и загружает состояние приложения
-- Обрабатывает ошибки ввода-вывода
-
-### TaskManager
-- Бизнес-логика управления задачами
-- CRUD операции с задачами
-- Валидация статусов и данных
-
-### DOMManager
-- Рендеринг задач в колонки
-- Обновление счётчиков задач
-- Управление drag-and-drop событиями
-
-## 🛠️ Установка и запуск
-
-Приложение не требует сборки или установки зависимостей. Просто откройте `index.html` в браузере.
-
-### Вариант 1: Откройте файл напрямую
-Дважды кликните на `index.html` или откройте его через браузер.
-
-### Вариант 2: Локальный сервер
-Для лучшего опыта рекомендуется использовать локальный сервер:
+### Using Docker Compose
 
 ```bash
-# Python 3
-python -m http.server 8000
+# Clone the repository
+git clone https://github.com/apan98/todo-app.git
+cd todo-app
 
-# Node.js (с http-server)
-npx http-server -p 8000
+# Start all services (PostgreSQL, Backend, Frontend)
+docker-compose up -d --build
 
-# PHP
-php -S localhost:8000
+# Access the application
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:5000
 ```
 
-Затем откройте `http://localhost:8000` в браузере.
+### Manual Setup
 
-### Вариант 3: GitHub Pages
-1. Загрузите проект в GitHub репозиторий
-2. Включите GitHub Pages в настройках репозитория
-3. Выберите `main` ветку в качестве источника
-4. Готово! Приложение доступно по адресу `https://username.github.io/todo-app`
+#### Prerequisites
+- Node.js 18+
+- PostgreSQL 15+
 
-## 📖 Как пользоваться
+#### Backend Setup
 
-### Добавление задачи
-1. Введите текст задачи в поле ввода в колонке "К выполнению"
-2. Нажмите кнопку "Добавить" или нажмите Enter
-3. Задача появится в колонке
+```bash
+cd server
+npm install
+npm start
+```
 
-### Перемещение задач (Drag & Drop)
-1. Нажмите на задачу и потяните её
-2. Перетащите в нужную колонку
-3. Отпустите мышь
-4. Задача автоматически сохранится в новой колонке
+The server will run on http://localhost:5000
 
-### Изменение статуса
-- Перетащите задачу между колонками, чтобы изменить её статус:
-  - 📝 К выполнению (todo)
-  - 🚀 В работе (in_progress)
-  - ✅ Выполнено (done)
+#### Frontend Setup
 
-### Удаление задачи
-1. Нажмите кнопку "Удалить" на карточке задачи
-2. Подтвердите удаление в диалоговом окне
+```bash
+cd client
+npm install
+npm run dev
+```
 
-## 💾 Хранение данных
+The app will run on http://localhost:3000
 
-Все задачи сохраняются автоматически в localStorage браузера. Данные:
-- Сохраняются при каждом изменении (добавление, удаление, перемещение)
-- Восстанавливаются при перезагрузке страницы
-- Хранятся локально на вашем устройстве
-- Не отправляются на сервер
+## API Endpoints
 
-⚠️ **Очистка данных**: Если вы очистите данные браузера или localStorage, все задачи будут удалены.
+- `GET /api/health` - Health check
+- `GET /api/tasks` - Get all tasks
+- `POST /api/tasks` - Create a new task
+- `PUT /api/tasks/:id` - Update a task
+- `DELETE /api/tasks/:id` - Delete a task
 
-## 🎨 Технологии
+## Architecture
 
-- **HTML5** — семантическая разметка
-- **CSS3** — стили, анимации, адаптивный дизайн
-- **JavaScript (ES6+)** — логика приложения, модульная архитектура
-- **localStorage API** — сохранение состояния
+### Frontend Structure
+```
+client/
+├── src/
+│   ├── api.ts              # API service layer
+│   ├── App.tsx             # Main application component
+│   ├── Column.tsx          # Kanban column component
+│   ├── TaskCard.tsx        # Task card component
+│   ├── TaskModal.tsx       # Task creation/edit modal
+│   └── types.ts            # TypeScript type definitions
+```
 
-## 🌐 Совместимость
+### Backend Structure
+```
+server/
+├── server.js               # Express server with PostgreSQL
+└── package.json
+```
 
-Приложение работает во всех современных браузерах:
-- ✅ Chrome/Edge 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Opera 76+
+## Database Schema
 
-## 📱 Адаптивность
+```sql
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'todo',
+    priority VARCHAR(20) DEFAULT 'low',
+    color VARCHAR(7) DEFAULT '#e91e63',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-Приложение адаптируется под разные размеры экранов:
-- **Desktop (>1024px)** — три колонки в ряд
-- **Tablet (768-1024px)** — две колонки в ряд
-- **Mobile (<768px)** — одна колонка, вертикальная прокрутка
+## License
 
-## 🔒 Безопасность
-
-- Нет авторизации — используйте только локально
-- Данные не передаются на внешние серверы
-- Ввод данных очищается от XSS (escapeHTML)
-
-## 🚧 Ограничения
-
-- Максимум 200 символов в тексте задачи
-- Нет возможности редактирования задач
-- Нет сроков выполнения задачи
-- Нет приоритетов и меток
-- Данные хранятся только в одном браузере
-
-## 📝 Лицензия
-
-MIT License — используйте свободно для личных и коммерческих проектов.
-
-## 🤝 Участие в разработке
-
-Вклад приветствуется! Fork проект и отправляйте Pull Requests.
-
-## 📞 Контакты
-
-Создано для демонстрации возможностей vanilla JavaScript и localStorage.
-
----
-
-**Наслаждайтесь продуктивностью! 🎉**
+MIT
