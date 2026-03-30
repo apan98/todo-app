@@ -2,15 +2,16 @@ import { Droppable, DroppableProvided, DroppableStateSnapshot } from '@hello-pan
 import { Box, Paper, Typography, Button, alpha } from '@mui/material';
 import { Add } from '@mui/icons-material';
 import TaskCard from './TaskCard';
+import { Task } from './types';
 
 interface ColumnProps {
   title: string;
-  status: string;
-  tasks: any[];
+  status: Task['status'];
+  tasks: Task[];
   icon: string;
   color: string;
-  onAddTask: (status: string) => void;
-  onEditTask: (task: any) => void;
+  onAddTask: (status: Task['status']) => void;
+  onEditTask: (task: Task) => void;
   onDeleteTask: (id: number) => void;
 }
 
@@ -25,14 +26,14 @@ const Column = ({ title, status, tasks, icon, color, onAddTask, onEditTask, onDe
         display: 'flex',
         flexDirection: 'column',
         bgcolor: alpha(color, 0.08),
-        border: `1px solid ${alpha(color, 0.3)}`
+        border: "1px solid " + alpha(color, 0.3)
       }}
     >
       <Box
         sx={{
           p: 2,
           bgcolor: alpha(color, 0.15),
-          borderBottom: `2px solid ${color}`,
+          borderBottom: "2px solid ${color}",
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -97,7 +98,7 @@ const Column = ({ title, status, tasks, icon, color, onAddTask, onEditTask, onDe
         )}
       </Droppable>
 
-      <Box sx={{ p: 2, borderTop: `1px solid ${alpha(color, 0.2)` }}>
+      <Box sx={{ p: 2, borderTop: "1px solid ${alpha(color, 0.2)" }}>
         <Button
           fullWidth
           variant="outlined"
@@ -112,7 +113,7 @@ const Column = ({ title, status, tasks, icon, color, onAddTask, onEditTask, onDe
             }
           }}
         >
-          Добавить задачу
+          Add task
         </Button>
       </Box>
     </Paper>

@@ -1,4 +1,4 @@
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -8,21 +8,10 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Production stage - use lightweight nginx
 FROM nginx:alpine
 
-# Copy built files from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx config for SPA routing
-RUN echo 'server { \
-    listen 80; \
-    location / { \
-        root /usr/share/nginx/html; \
-        index index.html; \
-        try_files $$uri /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+RUN chmod -R 755 /usr/share/nginx/html
 
 EXPOSE 80
 

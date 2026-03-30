@@ -11,7 +11,8 @@ import {
   FormControl,
   InputLabel,
   Box,
-  Chip
+  Chip,
+  Typography
 } from '@mui/material';
 import { Task, PRIORITY_COLORS, DEFAULT_COLORS } from './types';
 
@@ -26,7 +27,7 @@ const TaskModal = ({ open, task, onClose, onSave }: TaskModalProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Task['priority']>('low');
-  const [color, setColor] = useState(DEFAULT_COLORS[0]);
+  const [color, setColor] = useState<string>(DEFAULT_COLORS[0]);
 
   useEffect(() => {
     if (task) {

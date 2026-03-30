@@ -1,6 +1,5 @@
 import { Task } from './types';
 
-const API_BASE = process.env.VITE_API_BASE || '/api';
 
 class ApiService {
   async fetchTasks(): Promise<Task[]> {
