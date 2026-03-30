@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo App - Kanban Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>📋 Todo App - Kanban Board</h1>
+
+  <div class="kanban-board">
+    <!-- TODO Column -->
+    <div class="column column-todo">
+      <div class="column-header">
+        <h2>📝 К выполнению</h2>
+        <span class="task-count" id="count-todo">0</span>
+      </div>
+      <div class="tasks" id="tasks-todo"></div>
+
+      <div class="add-task-form">
+        <input
+          type="text"
+          id="task-input"
+          placeholder="Новая задача..."
+          maxlength="200"
+        />
+        <button id="add-task-btn" type="button">Добавить</button>
+      </div>
+    </div>
+
+    <!-- IN PROGRESS Column -->
+    <div class="column column-in-progress">
+      <div class="column-header">
+        <h2>🚀 В работе</h2>
+        <span class="task-count" id="count-in-progress">0</span>
+      </div>
+      <div class="tasks" id="tasks-in-progress"></div>
+    </div>
+
+    <!-- DONE Column -->
+    <div class="column column-done">
+      <div class="column-header">
+        <h2>✅ Выполнено</h2>
+        <span class="task-count" id="count-done">0</span>
+      </div>
+      <div class="tasks" id="tasks-done"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
