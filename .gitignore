@@ -22,3 +22,6 @@ npm-debug.log*
 # Environment
 .env
 .env.local
+
+# Symlink to client/src (for CI checks)
+src
