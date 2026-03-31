@@ -1,1 +1,9 @@
-# API routes package
+"""
+API routes package.
+
+Contains all API route definitions organized by version.
+"""
+
+from app.api import v1
+
+__all__ = ["v1"]
