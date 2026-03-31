@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./notes.db
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production-min-32-chars}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      APP_NAME: Notes API
+      APP_VERSION: 0.1.0
+    volumes:
+      # Volume for SQLite database persistence
+      - notes_data:/app/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  notes_data:
