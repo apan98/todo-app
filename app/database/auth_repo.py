@@ -7,17 +7,13 @@ Extends BaseCRUD with User-specific methods including:
 - verify_password: Verify a user's password against hash
 """
 from typing import Optional
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crud import BaseCRUD
+from app.core.security import hash_password, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate
-
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserRepository(BaseCRUD[User, UserCreate, dict]):
@@ -70,7 +66,7 @@ class UserRepository(BaseCRUD[User, UserCreate, dict]):
         """
         # Extract password and hash it
         password = obj_in.password
-        hashed_password = self._hash_password(password)
+        hashed_password = hash_password(password)
         
         # Create user data without plain password
         user_data = obj_in.model_dump(exclude={"password"})
@@ -98,16 +94,4 @@ class UserRepository(BaseCRUD[User, UserCreate, dict]):
         Returns:
             True if password matches, False otherwise
         """
-        return pwd_context.verify(plain_password, hashed_password)
-
-    def _hash_password(self, password: str) -> str:
-        """
-        Hash a plain password.
-        
-        Args:
-            password: Plain text password
-            
-        Returns:
-            Hashed password string
-        """
-        return pwd_context.hash(password)
+        return verify_password(plain_password, hashed_password)

@@ -8,8 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
-from app.database import get_db
-from app.database.auth_repo import UserRepository
+from app.database import get_db, UserRepository
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead
