@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.api.v1 import auth, tags
+from app.api.v1 import api_router
 
 
 @asynccontextmanager
@@ -57,5 +57,4 @@ async def health_check() -> dict:
 
 
 # Include API v1 routes
-app.include_router(auth.router)
-app.include_router(tags.router)
+app.include_router(api_router, prefix="/api/v1")
